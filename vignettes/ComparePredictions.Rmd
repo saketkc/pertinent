@@ -1,0 +1,391 @@
+---
+title: "Compare Predictions"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(Seurat)
+  library(SeuratData)
+  library(tidyverse)
+})
+
+theme_set(theme_classic())
+#' Summarize difference in prediction obtained from two prediction methods
+#' @param object Seurat object
+#' @param predcol.1 Metadata column name for first method's predictions
+#' @param predcol.2 Metadata column name for second methods' predictions
+#' @param min.diff.cells Return only comparisons where the difference between two methods exceeds this. Default is 3
+#' @param diff.only Return statistics only for cases where the predictions differ. Default is false which will return all comparisons
+#' @importFrom magrittr %>%
+#' @importFrom dplyr filter arrange desc
+#' @export
+SummarisePredDiffs <- function(object,
+                               predcol.1,
+                               predcol.2,
+                               min.diff.cells = 3,
+                               diff.only = FALSE) {
+  preds <- as.data.frame(table(
+    object@meta.data[, predcol.1],
+    object@meta.data[, predcol.2]
+  ))
+
+  preds <- preds %>%
+    filter(Freq >= min.diff.cells) %>%
+    arrange(Var1, Var2, desc(Freq))
+  preds$Var1 <- as.character(preds$Var1)
+  preds$Var2 <- as.character(preds$Var2)
+  same_celltypes <- preds[preds$Var1 == preds$Var2, ]
+
+  colnames(preds)[1] <- predcol.1
+  colnames(preds)[2] <- predcol.2
+
+  if (diff.only) {
+    preds <- preds[preds[, predcol.2] != preds[, predcol.1], ] %>% arrange(desc(Freq))
+    preds <- preds[preds[, predcol.1] %in% same_celltypes$Var1, ]
+    preds <- preds[preds[, predcol.2] %in% same_celltypes$Var1, ]
+  }
+
+  return(preds)
+}
+
+#' Compare accuracy of prediction of two different annotation methods
+#'
+#' This method uses consensus prediction between the methods as a ground truth to find markers for
+#' each of the two celltypes where the two methods have a consensus and then uses these markers
+#' to predict the most likely celltype of cells where the predictions differ
+#' @param object Seurat object
+#' @param celltype.1 Celltype 1
+#' @param celltype.2 Celltype 2
+#' @param predcol.1 Metadata column name for first method's predictions
+#' @param predcol.2 Metadata column name for second methods' predictions
+#' @param predcol.1 Metadata column name for first method's prediction scores
+#' @param predcol.2 Metadata column name for second methods' prediction scores
+#' @param use_scale_data_for_glm Whether to use scaled data for running logistic regression
+#' @importFrom magrittr %>%
+#' @importFrom dplyr filter arrange desc top_n
+#' @importFrom Matrix t
+#' @importFrom stats glm predict
+#' @export
+ComparePredictions <- function(object,
+                               celltype.1,
+                               celltype.2,
+                               predcol.1,
+                               predcol.2,
+                               scorecol.1,
+                               scorecol.2,
+                               assay = "SCT",
+                               slot = "data",
+                               use.presto = FALSE,
+                               use.fastglm = FALSE) {
+  celltypes_to_use <- c(celltype.1, celltype.2)
+
+  object$concat_pred <- paste0(object@meta.data[, predcol.1], "_", object@meta.data[, predcol.2])
+
+  same_celltype <- c(
+    paste0(celltype.1, "_", celltype.1),
+    paste0(celltype.2, "_", celltype.2)
+  )
+  diff_celltype <- c(
+    paste0(celltype.1, "_", celltype.2),
+    paste0(celltype.2, "_", celltype.1)
+  )
+
+  obj.subset <- subset(x = object, concat_pred %in% c(same_celltype, diff_celltype))
+  obj.subset$concat_pred <- factor(obj.subset$concat_pred, levels = c(
+    same_celltype[1], diff_celltype[1],
+    same_celltype[2], diff_celltype[2]
+  ))
+  Idents(object = obj.subset) <- "concat_pred"
+
+
+  if (use.presto) {
+    DefaultAssay(obj.subset) <- assay
+    markers <- SeuratWrappers::RunPresto(obj.subset,
+      ident.1 = same_celltype[1], ident.2 = same_celltype[2], assay = assay, slot = slot,
+      group.by = "concat_pred", min.pct = 0.1, min.cells.group = 1, verbose = FALSE
+    )
+  } else {
+    markers <- FindMarkers(obj.subset,
+      ident.1 = same_celltype[1], ident.2 = same_celltype[2], assay = assay, slot = slot,
+      group.by = "concat_pred", min.pct = 0.1, min.cells.group = 1, verbose = FALSE
+    )
+  }
+  markers$gene <- rownames(markers)
+
+  markers <- markers[markers$p_val < 0.05, ]
+  features.to.plot <- markers$gene
+
+  obj.same_pred <- subset(obj.subset, concat_pred %in% same_celltype)
+  obj.nonsame_pred <- subset(obj.subset, concat_pred %in% diff_celltype)
+
+  # Use only 500 max genes for doing logistic regression
+  # markers_shortlist <- markers %>% top_n(n = 500, wt = abs(avg_log2FC))
+  markers_pos <- markers %>%
+    filter(avg_log2FC > 0) %>%
+    top_n(n = 100, wt = abs(avg_log2FC))
+
+  markers_neg <- markers %>%
+    filter(avg_log2FC < 0) %>%
+    top_n(n = 100, wt = abs(avg_log2FC))
+
+  # markers_shortlist <- markers %>% top_n(n = 500, wt = abs(avg_log2FC))
+  markers_shortlist <- rbind(markers_pos, markers_neg)
+  genes <- unique(as.character(markers_shortlist$gene))
+
+
+  #
+  train.data <- as.data.frame(x = Matrix::t(x = GetAssayData(object = obj.same_pred, assay = assay, slot = slot)[genes, ]))
+  # if (use_scale_data_for_glm) {
+  #  train.data <- as.data.frame(Matrix::t(obj.same_pred@assays$RNA@scale.data[genes, ]))
+  # } else {
+  #  train.data <- as.data.frame(Matrix::t(obj.same_pred@assays$SCT@data[genes, ]))
+  # }
+
+  # both columns are same
+  train.data$celltype <- factor(obj.same_pred@meta.data[, predcol.2], levels = celltypes_to_use)
+
+  test.data <- as.data.frame(x = Matrix::t(x = GetAssayData(object = obj.nonsame_pred, assay = assay, slot = slot)[genes, ]))
+
+  # if (use_scale_data_for_glm) {
+  #  test.data <- as.data.frame(Matrix::t(obj.nonsame_pred@assays$RNA@scale.data[genes, ]))
+  # } else {
+  #  test.data <- as.data.frame(Matrix::t(obj.nonsame_pred@assays$SCT@data[genes, ]))
+  # }
+
+  if (use.fastglm) {
+    x <- train.data %>%
+      select(-celltype) %>%
+      as.matrix()
+    y <- as.numeric(train.data$celltype) - 1
+    model <- fastglm::fastglm(x, y, family = binomial(link = "logit"))
+    preds <- predict(model, newdata = as.matrix(x = test.data), type = "response")
+  } else {
+    model <- glm(as.formula("celltype ~ ."), family = binomial(link = "logit"), data = train.data)
+    preds <- predict(model, newdata = test.data, type = "response")
+  }
+
+
+  test.data$pred.1 <- factor(obj.nonsame_pred@meta.data[, predcol.1], levels = celltypes_to_use)
+  test.data$pred.2 <- factor(obj.nonsame_pred@meta.data[, predcol.2], levels = celltypes_to_use)
+
+  test.data$prediction.logistic <- celltypes_to_use[1] # this is level 1
+  test.data$prediction.logistic[preds > 0.5] <- celltypes_to_use[2] # this is level 2
+  test.data$prediction.logistic <- factor(test.data$prediction.logistic, levels = celltypes_to_use)
+  test.data$predscore.logistic <- as.numeric(preds)
+  test.data$predscore.1 <- obj.nonsame_pred@meta.data[, scorecol.1]
+  test.data$predscore.2 <- obj.nonsame_pred@meta.data[, scorecol.2]
+
+  test.data$cell_barcode <- colnames(obj.nonsame_pred@assays$SCT@data)
+
+  matching.1 <- length(which(test.data$pred.1 == test.data$prediction.logistic))
+  matching.2 <- length(which(test.data$pred.2 == test.data$prediction.logistic))
+
+  accuracy.1 <- matching.1 / nrow(test.data)
+  accuracy.2 <- matching.2 / nrow(test.data)
+
+  DefaultAssay(obj.subset) <- assay
+  if (assay == "RNA") {
+    obj.subset <- NormalizeData(obj.subset, verbose = FALSE)
+    obj.subset <- ScaleData(obj.subset, features = genes, verbose = FALSE)
+  } else if (assay == "SCT") {
+    obj.subset <- GetResidual(obj.subset, features = genes)
+  }
+
+  p1 <- DoHeatmap(obj.subset, features = genes, slot = "scale.data") +
+    theme(axis.text.y = element_text(size = 0)) +
+    xlab(paste0("accuracy.1: ", round(accuracy.1, 2))) +
+    NoLegend()
+  p2 <- ggplot(test.data, aes(predscore.1, predscore.logistic)) +
+    geom_point() +
+    xlab("Pred.score.1") +
+    ylab("Logistic.pred.score") +
+    theme_bw()
+  p3 <- ggplot(test.data, aes(predscore.2, predscore.logistic)) +
+    geom_point() +
+    xlab("Pred.score.2") +
+    ylab("Logistic.pred.score") +
+    theme_bw()
+  layout <- "
+  AB
+  AC"
+  p <- p1 + p2 + p3
+  p <- p + patchwork::plot_layout(design = layout)
+
+  return(list(
+    test.data = test.data, accuracy.1 = accuracy.1,
+    accuracy.2 = accuracy.2,
+    plot = p
+  ))
+}
+```
+
+# Data
+
+```{r, fig.width=10, fig.height=5}
+data("pbmc3k")
+pbmc3k <- pbmc3k %>%
+  SCTransform(vst.flavor = "v2", verbose = FALSE) %>%
+  RunPCA(verbose = FALSE) %>%
+  FindNeighbors(verbose = FALSE) %>%
+  FindClusters(verbose = FALSE) %>%
+  RunUMAP(dims = 1:30, verbose = FALSE)
+p1 <- DimPlot(pbmc3k, group.by = "seurat_annotations", label = T) + NoLegend()
+p2 <- DimPlot(pbmc3k, group.by = "seurat_clusters", label = T) + NoLegend()
+
+p1 | p2
+```
+
+# Swap out some labels
+
+```{r, fig.width=10, fig.height=5}
+pbmc3k$other_annotations <- as.character(pbmc3k$seurat_annotations)
+# swap out some CD14+Mono
+# pbmc3k$other_annotations[pbmc3k$seurat_clusters == "5"] <- "FCGR3A+ Mono"
+# p3 <- DimPlot(pbmc3k, group.by="other_annotations", label=T) + NoLegend()
+
+pbmc3k$other_annotations[pbmc3k$seurat_clusters == "4"] <- "NK"
+p3 <- DimPlot(pbmc3k, group.by = "other_annotations", label = T) + NoLegend()
+
+p1 | p3
+```
+
+# Summarize prediction differences
+
+```{r}
+pred_diffs <- SummarisePredDiffs(pbmc3k, predcol.1 = "seurat_annotations", predcol.2 = "other_annotations", min.diff.cells = 1, diff.only = F)
+
+pred_diffs <- SummarisePredDiffs(pbmc3k, predcol.1 = "seurat_annotations", predcol.2 = "other_annotations", min.diff.cells = 1, diff.only = T)
+DT::datatable(pred_diffs)
+```
+
+# Compare predictions
+
+```{r}
+pbmc3k$seurat_pred_score <- 1
+pbmc3k$other_pred_score <- 1
+celltype.1 <- "NK"
+celltype.2 <- "CD8 T"
+
+pbmc3k$id <- paste0(pbmc3k$seurat_annotations, "_", pbmc3k$other_annotations)
+Idents(pbmc3k) <- "id"
+
+markers <- FindMarkers(pbmc3k, ident.1 = paste0(celltype.1, "_", celltype.1), ident.2 = paste0(celltype.2, "_", celltype.2), assay = "SCT", slot = "data")
+cells.1 <- WhichCells(object = pbmc3k, idents = paste0(celltype.1, "_", celltype.1))
+cells.2 <- WhichCells(object = pbmc3k, idents = paste0(celltype.2, "_", celltype.2))
+
+
+gene <- rownames(markers)[1]
+
+expression.1 <- GetAssayData(pbmc3k, assay = "SCT", slot = "data")[gene, cells.1]
+expression.2 <- GetAssayData(pbmc3k, assay = "SCT", slot = "data")[gene, cells.2]
+
+expression_df <- data.frame(
+  expression = c(expression.1, expression.2),
+  celltype = c(
+    rep(celltype.1, length(cells.1)),
+    rep(celltype.2, length(cells.2))
+  )
+)
+expression_df$celltype <- factor(expression_df$celltype, levels = c(celltype.1, celltype.2))
+
+ggplot(data = expression_df, mapping = aes(expression, celltype)) +
+  geom_jitter() +
+  xlab(paste0(gene, " SCT data"))
+
+expression_df$celltype.numeric <- as.numeric(expression_df$celltype) - 1
+model <- glm(
+  formula = celltype.numeric ~ expression,
+  data = expression_df,
+  family = binomial(link = "logit")
+)
+expression_df$predicted <- predict(model, expression_df, type = "response")
+
+
+ggplot(data = expression_df) +
+  geom_jitter(mapping = aes(expression, celltype.numeric)) +
+  xlab(paste0(gene, " SCT data")) +
+  geom_smooth(mapping = aes(expression, predicted), method = "gam") +
+  scale_y_continuous(breaks = c(0, 1), labels = c(celltype.1, celltype.2))
+
+
+markers_pos <- markers %>%
+  filter(avg_log2FC > 0) %>%
+  arrange(desc(avg_log2FC)) %>%
+  head(10)
+markers_neg <- markers %>%
+  filter(avg_log2FC < 0) %>%
+  arrange(desc(abs(avg_log2FC))) %>%
+  head(10)
+
+markers_shortlist <- rbind(markers_pos, markers_neg)
+
+obj.subset <- subset(pbmc3k, cells = c(cells.1, cells.2))
+obj.subset <- GetResidual(obj.subset, features = rownames(markers_shortlist))
+
+DoHeatmap(obj.subset, features = rownames(markers_shortlist), slot = "data", disp.min = 0, disp.max = 2, size = 4) + scale_fill_gradientn(colors = RColorBrewer::brewer.pal(n = 8, name = "RdBu"))
+```
+
+
+```{r}
+gene <- rownames(markers_shortlist)[1]
+
+expression.1 <- GetAssayData(pbmc3k, assay = "SCT", slot = "data")[gene, cells.1]
+expression.2 <- GetAssayData(pbmc3k, assay = "SCT", slot = "data")[gene, cells.2]
+
+expression_df <- data.frame(
+  expression = c(expression.1, expression.2),
+  celltype = c(
+    rep(celltype.1, length(cells.1)),
+    rep(celltype.2, length(cells.2))
+  )
+)
+expression_df$celltype <- factor(expression_df$celltype, levels = c(celltype.1, celltype.2))
+
+ggplot(data = expression_df, mapping = aes(expression, celltype)) +
+  geom_jitter() +
+  xlab(paste0(gene, " SCT data"))
+
+expression_df$celltype.numeric <- as.numeric(expression_df$celltype) - 1
+model <- glm(
+  formula = celltype.numeric ~ expression,
+  data = expression_df,
+  family = binomial(link = "logit")
+)
+expression_df$predicted <- predict(model, expression_df, type = "response")
+
+
+ggplot(data = expression_df) +
+  geom_jitter(mapping = aes(expression, celltype.numeric)) +
+  xlab(paste0(gene, " SCT data")) +
+  geom_smooth(mapping = aes(expression, predicted), method = "gam") +
+  scale_y_continuous(breaks = c(0, 1), labels = c(celltype.1, celltype.2))
+```
+
+```{r}
+compare_data <- ComparePredictions(
+  object = pbmc3k,
+  predcol.1 = "seurat_annotations", predcol.2 = "other_annotations",
+  celltype.1 = celltype.1, celltype.2 = celltype.2,
+  scorecol.1 = "seurat_pred_score", scorecol.2 = "other_pred_score",
+  assay = "SCT", slot = "data",
+  use.presto = TRUE, use.fastglm = TRUE
+)
+print(compare_data[["plot"]])
+```
+
+
+
+```{r}
+DT::datatable(compare_data[["test.data"]])
+```
+
+```{r}
+print(compare_data[["accuracy.1"]])
+```
+
+```{r}
+print(compare_data[["accuracy.2"]])
+```

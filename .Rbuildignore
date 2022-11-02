@@ -1,0 +1,4 @@
+^renv$
+^renv\.lock$
+^scutilsR\.Rproj$
+^\.Rproj\.user$

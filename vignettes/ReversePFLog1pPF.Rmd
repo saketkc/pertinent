@@ -1,0 +1,28 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+suppressPackageStartupMessages({
+  library(SeuratData)
+  library(Seurat)
+  library(ggpubr)
+  library(pertinent)
+  library(sparseMatrixStats)
+  library(tidyverse)
+})
+
+theme_set(theme_pubr())
+```
+
+```{r}
+data("pbmc3k")
+counts <- pbmc3k@assays$RNA@counts
+
+log1pPF_data <- NormalizeLog1pPF(counts)
+PFlog1pPF_data <- NormalizePFLog1pPF(counts)
+
+log1pPF_rev <- ReverseLogNorm(log1pPF_data)
+```

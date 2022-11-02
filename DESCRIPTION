@@ -1,0 +1,27 @@
+Package: pertinent
+Title: Collection of useful functions for processing single-cell data
+Version: 0.0.0.9003
+Authors@R: 
+    person(given = "Saket",
+           family = "Choudhary",
+           role = c("aut", "cre"),
+           email = "saketkc@gmail.com",
+           comment = c(ORCID = "0000-0001-5202-7633"))
+Imports:
+    tidyverse,
+    ggplot2,
+    Seurat,
+    Matrix,
+    data.table,
+    Signac
+Suggests:
+  tximport,
+  DropletUtils,
+  SeuratDisk,
+  metacell
+Description: Collection of useful functions for processing single-cell data.
+License: BSD
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.1
