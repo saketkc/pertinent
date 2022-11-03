@@ -56,3 +56,10 @@ SparseSpearmanCor <- function(X, Y = NULL, cov = FALSE) {
   rankY <- SparsifiedRanks(Y)
   return(corSparse(X = rankX, Y = rankY, cov = cov))
 }
+
+#' Convert matrix to sparse matrix
+#' @export
+make.sparse <- function(mat) {
+  mat <- as(object = mat, Class = "Matrix")
+  return(as(object = as(object = as(object = mat, Class = "dMatrix"), Class = "generalMatrix"), Class = "CsparseMatrix"))
+}

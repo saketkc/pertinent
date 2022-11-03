@@ -245,3 +245,126 @@ ReadMtx <- function(mtx,
 
   return(data)
 }
+
+#' Convert parsebio's long dataframe to a sparse matrix
+#' @importFrom tidyr pivot_wider
+#' @importFrom magrittr %>%
+#' @importFrom Matrix sparseMatrix
+SparsifyParseDataframe <- function(df, all_genes, all_cells) {
+  tmp <- pivot_wider(data = df, names_from = "bc_wells", values_from = "n", values_fill = 0) %>% as.data.frame()
+  present_genes <- tmp$gene_name_id
+  rownames(x = tmp) <- tmp$gene_name_id
+  tmp$gene_name_id <- NULL
+  tmp <- make.sparse(mat = tmp)
+  present_cells <- colnames(x = tmp)
+
+  missing_cells <- setdiff(x = all_cells, y = present_cells)
+
+  # these genes are not in the matrix, but we want to include thse explicitly
+  missing_genes <- setdiff(x = all_genes, y = present_genes)
+  if (length(x = missing_genes) > 0) {
+    missing_genes.cm <- sparseMatrix(i = {}, j = {}, dims = c(length(x = missing_genes), ncol(x = tmp)))
+    rownames(x = missing_genes.cm) <- missing_genes
+    tmp <- rbind(tmp, missing_genes.cm)
+  }
+
+  if (length(x = missing_cells) > 0) {
+    missing_cells.cm <- sparseMatrix(i = {}, j = {}, dims = c(nrow(x = tmp), length(x = missing_cells)))
+    colnames(x = missing_cells.cm) <- missing_cells
+    tmp <- cbind(tmp, missing_cells.cm)
+  }
+  return(tmp)
+}
+
+#' Sort rownames and colnames of a matrix
+#' @export
+SortMatrixByName <- function(mat) {
+  mat <- mat[sort(x = rownames(x = mat)), sort(x = colnames(x = mat))]
+  return(mat)
+}
+
+#' Rename
+#' @importFrom stringr str_split_fixed
+RenameRows <- function(mat, pattern = "__", gene_field = 2) {
+  rownames(x = mat) <- str_split_fixed(string = rownames(x = mat), pattern = pattern, n = Inf)[, gene_field]
+  return(mat)
+}
+
+#' Read output from parsebio pipeline
+#' @importFrom data.table fread
+#' @importFrom Matrix readMM t
+#' @importFrom stringr str_split_fixed
+#' @importFrom SeuratObject CreateSeuratObject CreateAssayObject
+#' @importFrom magrittr %>%
+#' @importFrom dplyr arrange filter group_by select tally
+#' @importFrom sparseMatrixStats rowSums2
+#' @export
+ReadParsebioOutput <- function(path, add.hexR.assay = FALSE, add.polyT.assay = FALSE) {
+  process.dir <- file.path(dirname(path = dirname(path = path)), "process")
+  tscp_df <- fread(file = file.path(process.dir, "tscp_assignment.csv.gz"))
+
+  tscp_df$gene_name[is.na(tscp_df$gene_name)] <- tscp_df$gene[is.na(tscp_df$gene_name)]
+  tscp_df$gene_name[tscp_df$gene_name == ""] <- tscp_df$gene[tscp_df$gene_name == ""]
+  tscp_df$gene_name_id <- paste0(tscp_df$gene, "__", tscp_df$gene_name)
+
+  counts <- make.sparse(mat = t(x = readMM(file.path(path, "DGE.mtx"))))
+  metadata <- read.csv(file = file.path(path, "cell_metadata.csv"), row.names = 1)
+
+  genes <- read.csv(file = file.path(path, "all_genes.csv"))
+  genes$gene_name[is.na(genes$gene_name)] <- genes$gene_id[is.na(genes$gene_name)]
+  genes$gene_name[genes$gene_name == ""] <- genes$gene_id[genes$gene_name == ""]
+  genes$gene_name_id <- paste0(genes$gene_id, "__", genes$gene_name)
+  all_genes <- genes$gene_name_id
+
+  colnames(x = counts) <- rownames(x = metadata)
+  rownames(x = counts) <- all_genes
+
+  counts <- RenameRows(mat = counts) %>% SortMatrixByName()
+
+  seu <- CreateSeuratObject(counts = counts, meta.data = metadata, min.cells = 1, min.features = 1)
+  cells <- Cells(seu)
+
+  tscp_df_filtered <- tscp_df %>%
+    filter(bc_wells %in% cells) %>%
+    arrange(bc_wells, cell_barcode, polyN)
+  tscp_df_filtered_summary_bygene <- tscp_df_filtered %>%
+    group_by(bc_wells, gene_name_id) %>%
+    tally()
+  tscp_df_filtered_summary_bygene_byrt <- tscp_df_filtered %>%
+    group_by(bc_wells, gene_name_id, rt_type) %>%
+    tally()
+  tscp_df_filtered_summary_bygene_byrt_R <- tscp_df_filtered_summary_bygene_byrt %>%
+    filter(rt_type == "R") %>%
+    select(-rt_type)
+  tscp_df_filtered_summary_bygene_byrt_T <- tscp_df_filtered_summary_bygene_byrt %>%
+    filter(rt_type == "T") %>%
+    select(-rt_type)
+
+  tmp_R <- SparsifyParseDataframe(tscp_df_filtered_summary_bygene_byrt_R, all_genes = all_genes, all_cells = cells) %>%
+    RenameRows() %>%
+    SortMatrixByName()
+  tmp_T <- SparsifyParseDataframe(tscp_df_filtered_summary_bygene_byrt_T, all_genes = all_genes, all_cells = cells) %>%
+    RenameRows() %>%
+    SortMatrixByName()
+
+  if (add.hexR.assay) {
+    seu[["HexR"]] <- CreateAssayObject(counts = tmp_R, min.cells = 0, min.features = 0)
+  }
+  if (add.polyT.assay) {
+    seu[["PolyT"]] <- CreateAssayObject(counts = tmp_T, min.cells = 0, min.features = 0)
+  }
+
+  R_sum <- rowSums2(x = tmp_R)
+  T_sum <- rowSums2(x = tmp_T)
+  all_sum <- rowSums2(x = counts)
+
+  genewise_summary <- data.frame(gene_name_id = all_genes, R_reads = R_sum, T_reads = T_sum)
+  genewise_summary$gene_id <- str_split_fixed(string = genewise_summary$gene_name_id, pattern = "__", n = 2)[, 1]
+  genewise_summary$gene_name <- str_split_fixed(string = genewise_summary$gene_name_id, pattern = "__", n = 2)[, 2]
+  genes_to_keep <- genewise_summary %>%
+    filter(all_sum > 0) %>%
+    pull(gene_name) %>%
+    make.unique()
+  seu <- subset(seu, features = intersect(rownames(seu), genes_to_keep))
+  return(list(object = seu, summary = genewise_summary))
+}
