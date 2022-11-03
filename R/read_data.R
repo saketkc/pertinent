@@ -383,37 +383,5 @@ ReadParsebioOutput <- function(path, add.hexR.assay = FALSE, add.polyT.assay = F
   if (add.polyT.assay) {
     seu[["PolyT"]] <- CreateAssayObject(counts = tmp_T, min.cells = -1, min.features = -1)
   }
-
-  if (verbose) {
-    message("Generating summary ...")
-  }
-  if (FALSE){
-    target_genes <- rownames(x = counts)
-
-    R_sum <- rowSums2(x = tmp_R)
-    names(x = R_sum) <- rownames(x = tmp_R)
-    T_sum <- rowSums2(x = tmp_T)
-    names(x = T_sum) <- rownames(x = tmp_T)
-    all_sum <- rowSums2(x = counts)
-    names(x = all_sum) <- rownames(x = counts)
-
-    R_sum <- R_sum[target_genes]
-    T_sum <- T_sum[target_genes]
-
-    # gene_id <- str_split_fixed(string = all_genes, pattern = "__", n = 2)[, 1]
-    # gene_name <- str_split_fixed(string = all_genes, pattern = "__", n = 2)[, 2]
-    genewise_summary <- data.frame(
-      gene_name = target_genes,
-      R_reads = R_sum,
-      T_reads = T_sum,
-      total_reads = R_sum + T_sum
-    )
-    # genes_to_keep <- genewise_summary %>%
-    #   filter(total_reads > 0) %>%
-    #   pull(gene_name) %>%
-    #   make.unique()
-    # seu <- subset(seu, features = intersect(x = rownames(x = seu), y = genes_to_keep))
-    return(list(object = seu, summary = genewise_summary, summary2 = genewise_summary2))
-  }
   return(list(object = seu, summary = genewise_summary2))
 }
