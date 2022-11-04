@@ -267,3 +267,31 @@ Factorify <- function(values) {
   values.f <- factor(as.character(values), levels = sort(unique(as.character(values))))
   return(values.f)
 }
+
+#' Run SCT normalization
+#' @export
+DoSCT <- function(object) {
+  object <- SCTransform(object, vst.flavor = "v2")
+  object <- RunPCA(object, verbose = FALSE)
+  object <- RunUMAP(object, dims = 1:30, verbose = FALSE)
+
+  object <- FindNeighbors(object, dims = 1:30, verbose = FALSE)
+  object <- FindClusters(object, verbose = FALSE)
+}
+
+
+#' Run Log normalization
+#' @export
+DoLogNorm <- function(object) {
+  DefaultAssay(object) <- "RNA"
+  object <- NormalizeData(object)
+  object <- FindVariableFeatures(object)
+  object <- ScaleData(object)
+
+  object <- RunPCA(object, verbose = FALSE)
+  object <- RunUMAP(object, dims = 1:30, verbose = FALSE)
+
+  object <- FindNeighbors(object, dims = 1:30, verbose = FALSE)
+  object <- FindClusters(object, verbose = FALSE)
+  return(object)
+}
