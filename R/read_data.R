@@ -292,14 +292,14 @@ RenameRows <- function(mat, pattern = "__", gene_field = 2) {
 
 #' Read output from parsebio pipeline
 #' @importFrom data.table fread
-#' @importFrom Matrix readMM t
+#' @importFrom Matrix readMM rowSums t
 #' @importFrom stringr str_split_fixed
 #' @importFrom SeuratObject CreateSeuratObject CreateAssayObject
 #' @importFrom magrittr %>%
 #' @importFrom dplyr arrange filter full_join group_by rename select summarise tally
 #' @importFrom sparseMatrixStats rowSums2
 #' @export
-ReadParsebioOutput <- function(path, add.hexR.assay = FALSE, add.polyT.assay = FALSE, verbose = TRUE) {
+ReadParsebioOutput <- function(path, add.hexR.assay = TRUE, add.polyT.assay = TRUE, verbose = TRUE) {
   process.dir <- file.path(dirname(path = dirname(path = path)), "process")
   if (verbose) {
     message("Reading tscp file...")
@@ -321,12 +321,12 @@ ReadParsebioOutput <- function(path, add.hexR.assay = FALSE, add.polyT.assay = F
 
   colnames(x = counts) <- rownames(x = metadata)
   rownames(x = counts) <- all_genes
+  counts <- SortMatrixByName(mat = counts)
 
-  counts <- RenameRows(mat = counts) %>% SortMatrixByName()
   if (verbose) {
     message("Creating object...")
   }
-  seu <- CreateSeuratObject(counts = counts, meta.data = metadata, min.cells = 1, min.features = 1)
+  seu <- CreateSeuratObject(counts = counts %>% RenameRows(), meta.data = metadata, min.cells = 1, min.features = 1)
   cells <- Cells(seu)
 
   if (verbose) {
@@ -348,40 +348,52 @@ ReadParsebioOutput <- function(path, add.hexR.assay = FALSE, add.polyT.assay = F
     filter(rt_type == "T") %>%
     select(-rt_type)
 
-  tscp_df_filtered_summary_bygene_byrt_R2 <- tscp_df_filtered_summary_bygene_byrt_R %>%
-    rename(R_reads = n) %>%
-    group_by(gene_name_id) %>%
-    summarise(R_reads = sum(R_reads))
-  tscp_df_filtered_summary_bygene_byrt_T2 <- tscp_df_filtered_summary_bygene_byrt_T %>%
-    rename(T_reads = n) %>%
-    group_by(gene_name_id) %>%
-    summarise(T_reads = sum(T_reads))
-  if (verbose) {
-    message("Summarizing...")
+  if (FALSE) {
+    tscp_df_filtered_summary_bygene_byrt_R2 <- tscp_df_filtered_summary_bygene_byrt_R %>%
+      filter(bc_wells %in% cells) %>%
+      group_by(gene_name_id) %>%
+      summarise(R_reads = sum(n))
+    tscp_df_filtered_summary_bygene_byrt_T2 <- tscp_df_filtered_summary_bygene_byrt_T %>%
+      filter(bc_wells %in% cells) %>%
+      group_by(gene_name_id) %>%
+      summarise(T_reads = sum(n))
+    if (verbose) {
+      message("Summarizing...")
+    }
+    genewise_summary2 <- full_join(x = tscp_df_filtered_summary_bygene_byrt_R2, y = tscp_df_filtered_summary_bygene_byrt_T2, on = "gene_name_id")
+    genewise_summary2$total_reads <- genewise_summary2$R_reads + genewise_summary2$T_reads
+    gene_id <- str_split_fixed(string = genewise_summary2$gene_name_id, pattern = "__", n = 2)[, 1]
+    gene_name <- str_split_fixed(string = genewise_summary2$gene_name_id, pattern = "__", n = 2)[, 2]
+    genewise_summary2$gene_id <- gene_id
+    genewise_summary2$gene_name <- gene_name
+    genewise_summary2 <- genewise_summary2 %>%
+      select(gene_name_id, gene_id, gene_name, R_reads, T_reads, total_reads) %>%
+      arrange(gene_name_id) %>%
+      filter(total_reads > 0)
   }
-  genewise_summary2 <- full_join(x = tscp_df_filtered_summary_bygene_byrt_R2, y = tscp_df_filtered_summary_bygene_byrt_T2, on = "gene_name_id")
-  genewise_summary2$total_reads <- genewise_summary2$R_reads + genewise_summary2$T_reads
-  gene_id <- str_split_fixed(string = genewise_summary2$gene_name_id, pattern = "__", n = 2)[, 1]
-  gene_name <- str_split_fixed(string = genewise_summary2$gene_name_id, pattern = "__", n = 2)[, 2]
-  genewise_summary2$gene_id <- gene_id
-  genewise_summary2$gene_name <- gene_name
-  genewise_summary2 <- genewise_summary2 %>% select(gene_id, gene_name, R_reads, T_reads, total_reads) %>% arrange(gene_name, gene_id)
 
   if (verbose) {
     message("Creating hexR and polyA matrices ...")
   }
   tmp_R <- SparsifyParseDataframe(tscp_df_filtered_summary_bygene_byrt_R, all_genes = all_genes, all_cells = cells) %>%
-    RenameRows() %>%
-    SortMatrixByName()
-  tmp_T <- SparsifyParseDataframe(tscp_df_filtered_summary_bygene_byrt_T, all_genes = all_genes, all_cells = cells) %>%
-    RenameRows() %>%
     SortMatrixByName()
 
+  tmp_T <- SparsifyParseDataframe(tscp_df_filtered_summary_bygene_byrt_T, all_genes = all_genes, all_cells = cells) %>%
+    SortMatrixByName()
+
+  gene_summary <- data.frame(gene_name_id = all_genes, T_reads = rowSums(tmp_R)[all_genes], R_reads = rowSums(tmp_T), total_reads = rowSums(x = counts)[all_genes])
+  gene_id <- str_split_fixed(string = gene_summary$gene_name_id, pattern = "__", n = 2)[, 1]
+  gene_name <- str_split_fixed(string = gene_summary$gene_name_id, pattern = "__", n = 2)[, 2]
+  gene_summary$gene_id <- gene_id
+  gene_summary$gene_name <- gene_name
+  gene_summary <- gene_summary %>%
+    select(gene_name_id, gene_id, gene_name, R_reads, T_reads, total_reads)
+
   if (add.hexR.assay) {
-    seu[["HexR"]] <- CreateAssayObject(counts = tmp_R, min.cells = -1, min.features = -1)
+    seu[["HexR"]] <- CreateAssayObject(counts = tmp_R %>% RenameRows(), min.cells = -1, min.features = -1)
   }
   if (add.polyT.assay) {
-    seu[["PolyT"]] <- CreateAssayObject(counts = tmp_T, min.cells = -1, min.features = -1)
+    seu[["PolyT"]] <- CreateAssayObject(counts = tmp_T %>% RenameRows(), min.cells = -1, min.features = -1)
   }
-  return(list(object = seu, summary = genewise_summary2))
+  return(list(object = seu, summary = gene_summary))
 }
