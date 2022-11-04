@@ -348,30 +348,6 @@ ReadParsebioOutput <- function(path, add.hexR.assay = TRUE, add.polyT.assay = TR
     filter(rt_type == "T") %>%
     select(-rt_type)
 
-  if (FALSE) {
-    tscp_df_filtered_summary_bygene_byrt_R2 <- tscp_df_filtered_summary_bygene_byrt_R %>%
-      filter(bc_wells %in% cells) %>%
-      group_by(gene_name_id) %>%
-      summarise(R_reads = sum(n))
-    tscp_df_filtered_summary_bygene_byrt_T2 <- tscp_df_filtered_summary_bygene_byrt_T %>%
-      filter(bc_wells %in% cells) %>%
-      group_by(gene_name_id) %>%
-      summarise(T_reads = sum(n))
-    if (verbose) {
-      message("Summarizing...")
-    }
-    genewise_summary2 <- full_join(x = tscp_df_filtered_summary_bygene_byrt_R2, y = tscp_df_filtered_summary_bygene_byrt_T2, on = "gene_name_id")
-    genewise_summary2$total_reads <- genewise_summary2$R_reads + genewise_summary2$T_reads
-    gene_id <- str_split_fixed(string = genewise_summary2$gene_name_id, pattern = "__", n = 2)[, 1]
-    gene_name <- str_split_fixed(string = genewise_summary2$gene_name_id, pattern = "__", n = 2)[, 2]
-    genewise_summary2$gene_id <- gene_id
-    genewise_summary2$gene_name <- gene_name
-    genewise_summary2 <- genewise_summary2 %>%
-      select(gene_name_id, gene_id, gene_name, R_reads, T_reads, total_reads) %>%
-      arrange(gene_name_id) %>%
-      filter(total_reads > 0)
-  }
-
   if (verbose) {
     message("Creating hexR and polyA matrices ...")
   }
