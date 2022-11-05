@@ -56,12 +56,14 @@ bam2bw <- function(file,
     alignments <- readGAlignments(file = file)
     cov <- coverage(x = alignments)
     n_reads <- sum(sum(cov))
-    if (tolower(x = normalization.method) == "cpm") {
-      scale.factor <- as.numeric(x = 1000000 / n_reads)
-      cov <- round(x = cov * scale.factor, digits = 3)
-    } else if (tolower(x = normalization.method) == "rpkm") {
-      # not sure if this is correct
-      cov <- cov
+    if (!is.null(x = normalization.method)) {
+      if (tolower(x = normalization.method) == "cpm") {
+        scale.factor <- as.numeric(x = 1000000 / n_reads)
+        cov <- round(x = cov * scale.factor, digits = 3)
+      } else if (tolower(x = normalization.method) == "rpkm") {
+        # pass for now
+        cov <- cov
+      }
     }
     export.bw(object = cov, con = bw.path)
   } else if (method == "deeptools") {
