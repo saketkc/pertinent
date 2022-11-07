@@ -13,7 +13,8 @@ SplitParsebioBam(
   name.sep = "__",
   readtype.num = 2,
   metadata = NULL,
-  group.by = NULL
+  group.by = NULL,
+  verbose = TRUE
 )
 }
 \description{

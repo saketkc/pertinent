@@ -12,14 +12,21 @@ SplitParsebioBam <- function(file,
                              name.sep = "__",
                              readtype.num = 2,
                              metadata = NULL,
-                             group.by = NULL) {
+                             group.by = NULL,
+                             verbose = TRUE) {
   param <- ScanBamParam( # tag=c("nM",  "GX", "GN", "pN", "CB"),
     tag = c("CB")
   )
+  if (verbose) {
+    message("Reading bam ...")
+  }
   alignments <- readGAlignments(file = file, use.names = T, param = param)
 
   query_names <- alignments@NAMES
-  name_split <- str_split(query_names, pattern = name.sep)[[1]]
+  if (verbose) {
+    message("Extracting read names ...")
+  }
+  name_split <- str_split(string = query_names, pattern = name.sep)[[1]]
 
   # barcode <- name_split[, barcode.num]
   barcode <- mcols(x = alignments)[, "CB"] # name_split[, barcode.num]
@@ -38,10 +45,16 @@ SplitParsebioBam <- function(file,
     for (group in groups) {
       hexR_alignments_subset <- hexR_alignments[hexR_alignments@elementMetadata$barcode %in% groupwise_barcode[[group]]]
       polyT_alignmentss_subset <- polyT_alignments[polyT_alignments@elementMetadata$barcode %in% groupwise_barcode[[group]]]
+      if (verbose) {
+        message("Creating bigwigs  ...")
+      }
       export(object = hexR_alignments_subset, con = gsub(pattern = "\\.bam$", replacement = paste0("_", group, ".bam"), x = hexR.out, ignore.case = TRUE), format = "bam")
       export(object = polyT_alignmentss_subset, con = gsub(pattern = "\\.bam$", replacement = paste0("_", group, ".bam"), x = polyT.out, ignore.case = TRUE), format = "bam")
     }
   } else {
+    if (verbose) {
+      message("Creating bigwigs  ...")
+    }
     export(object = hexR_alignments, con = hexR.out, format = "bam")
     export(object = polyT_alignments, con = polyT.out, format = "bam")
   }
@@ -59,16 +72,26 @@ SplitParsebioBam <- function(file,
 CountReadsinParsebioBam <- function(file,
                                     name.sep = "__",
                                     readtype.num = 2,
-                                    cells = NULL) {
+                                    cells = NULL, verbose = TRUE) {
   param <- ScanBamParam( # tag=c("nM",  "GX", "GN", "pN", "CB"),
     tag = c("GX", "GN", "pN", "CB")
   )
+  if (verbose) {
+    message("Reading bam ...")
+  }
   alignments <- readGAlignments(file = file, use.names = T, param = param)
 
   query_names <- alignments@NAMES
-  name_split <- str_split(query_names, pattern = name.sep)[[1]]
+  if (verbose) {
+    message("Extracting read names ...")
+  }
+  name_split <- str_split(string = query_names, pattern = name.sep)[[1]]
+
   read_type <- name_split[readtype.num]
 
+  if (verbose) {
+    message("Creating mapping summary ...")
+  }
   df <- mcols(x = alignments) %>% as.data.frame()
   df$read_type <- read_type
   df$GN[df$GN == ""] <- df$GX[df$GN == ""]
@@ -76,6 +99,9 @@ CountReadsinParsebioBam <- function(file,
 
   if (!is.null(x = cells)) {
     df_filtered <- df_filtered %>% filter(CB %in% cells)
+  }
+  if (verbose) {
+    message("Summarising ...")
   }
   df_summary <- df_filtered %>%
     group_by(GX, GN, read_type) %>%

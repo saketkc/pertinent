@@ -4,7 +4,13 @@
 \alias{CountReadsinParsebioBam}
 \title{Count reads in a parsebio output bam}
 \usage{
-CountReadsinParsebioBam(file, name.sep = "__", readtype.num = 2, cells = NULL)
+CountReadsinParsebioBam(
+  file,
+  name.sep = "__",
+  readtype.num = 2,
+  cells = NULL,
+  verbose = TRUE
+)
 }
 \description{
 Count reads in a parsebio output bam
