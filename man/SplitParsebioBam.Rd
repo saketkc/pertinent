@@ -10,6 +10,8 @@ SplitParsebioBam(
     = TRUE),
   polyT.out = gsub(pattern = "\\\\.bam$", replacement = "_polyT.bam", x = file,
     ignore.case = TRUE),
+  name.sep = "__",
+  readtype.num = 2,
   metadata = NULL,
   group.by = NULL
 )

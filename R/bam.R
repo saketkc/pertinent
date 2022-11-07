@@ -1,21 +1,29 @@
 #' Split parsebio bam based on HexR or PolyT priming
-#' @importFrom stringr str_split_fixed
+#' @importFrom stringr str_split
 #' @importFrom  rtracklayer export
+#' @importFrom Rsamtools ScanBamParam
+#' @importFrom S4Vectors mcols
 #' @importFrom GenomicAlignments coverage readGAlignmentPairs readGAlignments
 #' @export
 #'
 SplitParsebioBam <- function(file,
                              hexR.out = gsub(pattern = "\\.bam$", replacement = "_hexR.bam", x = file, ignore.case = TRUE),
                              polyT.out = gsub(pattern = "\\.bam$", replacement = "_polyT.bam", x = file, ignore.case = TRUE),
+                             name.sep = "__",
+                             readtype.num = 2,
                              metadata = NULL,
                              group.by = NULL) {
-  alignments <- readGAlignments(file = file, use.names = T)
+  param <- ScanBamParam( # tag=c("nM",  "GX", "GN", "pN", "CB"),
+    tag = c("CB")
+  )
+  alignments <- readGAlignments(file = file, use.names = T, param = param)
 
   query_names <- alignments@NAMES
-  name_split <- str_split_fixed(query_names, pattern = "__", n = 3)
+  name_split <- str_split(query_names, pattern = name.sep)[[1]]
 
-  barcode <- name_split[, 1]
-  read_type <- name_split[, 2]
+  # barcode <- name_split[, barcode.num]
+  barcode <- mcols(x = alignments)[, "CB"] # name_split[, barcode.num]
+  read_type <- name_split[, readtype.num]
 
   alignments@elementMetadata$barcode <- barcode
   alignments@elementMetadata$read_type <- read_type
@@ -39,6 +47,43 @@ SplitParsebioBam <- function(file,
   }
 }
 
+#' Count reads in a parsebio output bam
+#' @importFrom dplyr filter group_by summarise n rename arrange
+#' @importFrom magrittr %>%
+#' @importFrom stringr str_split
+#' @importFrom Rsamtools ScanBamParam
+#' @importFrom S4Vectors mcols
+#' @importFrom GenomicAlignments coverage readGAlignmentPairs readGAlignments
+#' @export
+#'
+CountReadsinParsebioBam <- function(file,
+                                    name.sep = "__",
+                                    readtype.num = 2,
+                                    cells = NULL) {
+  param <- ScanBamParam( # tag=c("nM",  "GX", "GN", "pN", "CB"),
+    tag = c("GX", "GN", "pN", "CB")
+  )
+  alignments <- readGAlignments(file = file, use.names = T, param = param)
+
+  query_names <- alignments@NAMES
+  name_split <- str_split(query_names, pattern = name.sep)[[1]]
+  read_type <- name_split[readtype.num]
+
+  df <- mcols(x = alignments) %>% as.data.frame()
+  df$read_type <- read_type
+  df$GN[df$GN == ""] <- df$GX[df$GN == ""]
+  df_filtered <- df[(df$GX != "") | (df$GN != ""), ]
+
+  if (!is.null(x = cells)) {
+    df_filtered <- df_filtered %>% filter(CB %in% cells)
+  }
+  df_summary <- df_filtered %>%
+    group_by(GX, GN, read_type) %>%
+    summarise(n_reads = n()) %>%
+    arrange(GX, GN, read_type) %>%
+    rename(gene_id = GX, gene_name = GN)
+  return(df_summary)
+}
 #' Convert BAM to bigwig
 #' @importFrom  rtracklayer export.bw
 #' @importFrom GenomicAlignments coverage readGAlignmentPairs readGAlignments
