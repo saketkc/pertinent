@@ -18,9 +18,7 @@ HammingDistance <- function(string1, string2) {
 SingleMutations <- function(seq) {
   bases <- strsplit(x = "ACTG", split = "")[[1]]
   seq_chars <- strsplit(x = seq, split = "")[[1]]
-  print(seq_chars)
   seq_length <- length(x = seq_chars)
-  print(seq_length)
   mutated_sequences <- rep_len(x = "", length.out = (length(bases) - 1) * length(seq_chars))
   index <- 1
   for (i in 1:length(seq_chars)) {
@@ -67,7 +65,7 @@ CollapseKmerCounts <- function(kmers, counts) {
     for (seq in kmers) {
       mutated_sequences <- SingleMutations(seq = seq)
       for (mut_seq in mutated_sequences) {
-        if (!mut_seq %in% names(x = kmer_seqs_dict)) {
+        if (mut_seq %in% names(x = kmer_seqs_dict)) {
           ham_dict <- AppendToDefaultDict(ham_dict, mut_seq, seq)
         }
       }
@@ -102,5 +100,10 @@ CollapseKmerCounts <- function(kmers, counts) {
       }
     }
   }
-  return(kmer_counts)
+  # return(kmer_counts)
+  kmer_counts.df <- as.data.frame(x = t(x = data.frame(kmer_counts)))
+  colnames(x = kmer_counts.df)[1] <- "count"
+  kmer_counts.df$kmer <- rownames(x = kmer_counts.df)
+  kmer_counts.df <- kmer_counts.df[, c("kmer", "count")]
+  return(kmer_counts.df)
 }
