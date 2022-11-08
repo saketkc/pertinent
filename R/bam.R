@@ -73,7 +73,7 @@ CountReadsinParsebioBam <- function(file,
                                     name.sep = "__",
                                     readtype.num = 2,
                                     cells = NULL, verbose = TRUE) {
-  what <- c("qname", "flag", "mapq")
+  what <- c("flag", "mapq")
   flag <- scanBamFlag(
     isSecondaryAlignment = FALSE,
     isUnmappedQuery = FALSE,

@@ -57,6 +57,9 @@ CollapseKmerCounts <- function(kmers, counts) {
   kmer_length <- length(x = strsplit(x = kmers[1], split = "")[[1]])
   # check if all kmers are of same length or not
   total_kmers <- length(kmers)
+  if (total_kmers == 1){
+    return (data.frame(kmer = kmers, count = counts))
+  }
   kmer_seqs_dict <- rep_len(x = 0, length.out = total_kmers)
   names(kmer_seqs_dict) <- kmers
 
@@ -104,6 +107,6 @@ CollapseKmerCounts <- function(kmers, counts) {
   kmer_counts.df <- as.data.frame(x = t(x = data.frame(kmer_counts)))
   colnames(x = kmer_counts.df)[1] <- "count"
   kmer_counts.df$kmer <- rownames(x = kmer_counts.df)
-  kmer_counts.df <- kmer_counts.df[, c("kmer", "count")]
+  kmer_counts.df <- kmer_counts.df[, c("polyN", "count")]
   return(kmer_counts.df)
 }
