@@ -112,12 +112,12 @@ CountReadsinParsebioBam <- function(file,
   if (verbose) {
     message("Summarising ...")
   }
-  df_summary <- df_filtered %>%
-    group_by(GX, GN, read_type) %>%
-    summarise(n_reads = n()) %>%
-    arrange(GX, GN, read_type) %>%
-    rename(gene_id = GX, gene_name = GN)
-  return(df_summary)
+  # df_summary <- df_filtered %>%
+  #   group_by(GX, GN, read_type) %>%
+  #   summarise(n_reads = n()) %>%
+  #   arrange(GX, GN, read_type) %>%
+  #   rename(gene_id = GX, gene_name = GN)
+  return(df_filtered)
 }
 #' Convert BAM to bigwig
 #' @importFrom  rtracklayer export.bw
