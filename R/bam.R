@@ -1,5 +1,5 @@
 #' Split parsebio bam based on HexR or PolyT priming
-#' @importFrom stringr str_split
+#' @importFrom stringr str_split_fixed
 #' @importFrom  rtracklayer export
 #' @importFrom Rsamtools ScanBamParam
 #' @importFrom S4Vectors mcols
@@ -26,9 +26,8 @@ SplitParsebioBam <- function(file,
   if (verbose) {
     message("Extracting read names ...")
   }
-  name_split <- str_split(string = query_names, pattern = name.sep)[[1]]
+  name_split <- str_split_fixed(string = query_names, pattern = name.sep, n = Inf)
 
-  # barcode <- name_split[, barcode.num]
   barcode <- mcols(x = alignments)[, "CB"] # name_split[, barcode.num]
   read_type <- name_split[, readtype.num]
 
@@ -73,7 +72,7 @@ CountReadsinParsebioBam <- function(file,
                                     name.sep = "__",
                                     readtype.num = 2,
                                     cells = NULL, verbose = TRUE) {
-  what <- c("flag", "mapq")
+  what <- c("qname", "flag", "mapq")
   flag <- scanBamFlag(
     isSecondaryAlignment = FALSE,
     isUnmappedQuery = FALSE,
@@ -88,20 +87,20 @@ CountReadsinParsebioBam <- function(file,
   if (verbose) {
     message("Reading bam ...")
   }
-  alignments <- readGAlignments(file = file, use.names = T, param = param)
+  alignments <- readGAlignments(file = file, param = param)
+  df <- mcols(x = alignments) %>% as.data.frame()
 
-  query_names <- alignments@NAMES
+  query_names <- df$qname
   if (verbose) {
     message("Extracting read names ...")
   }
-  name_split <- str_split(string = query_names, pattern = name.sep)[[1]]
+  name_split <- str_split_fixed(string = query_names, pattern = name.sep, n = Inf)
 
-  read_type <- name_split[readtype.num]
+  read_type <- name_split[, readtype.num]
 
   if (verbose) {
     message("Creating mapping summary ...")
   }
-  df <- mcols(x = alignments) %>% as.data.frame()
   df$read_type <- read_type
   df$GN[df$GN == ""] <- df$GX[df$GN == ""]
   df_filtered <- df[(df$GX != "") | (df$GN != ""), ]
