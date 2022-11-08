@@ -57,8 +57,8 @@ CollapseKmerCounts <- function(kmers, counts) {
   kmer_length <- length(x = strsplit(x = kmers[1], split = "")[[1]])
   # check if all kmers are of same length or not
   total_kmers <- length(kmers)
-  if (total_kmers == 1){
-    return (data.frame(kmer = kmers, count = counts))
+  if (total_kmers == 1) {
+    return(data.frame(kmer = kmers, count = counts))
   }
   kmer_seqs_dict <- rep_len(x = 0, length.out = total_kmers)
   names(kmer_seqs_dict) <- kmers

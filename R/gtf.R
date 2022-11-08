@@ -13,7 +13,7 @@ ReplaceMissingEntries <- function(df, col.source, col.target) {
 #' @importFrom dplyr arrange filter rename select
 #' @export
 ParseGTF <- function(gtf) {
-  #gtf <- "/brahms/choudharys/data/Parsebio_Reference/Mus_musculus.GRCm39.108.gtf.gz"
+  # gtf <- "/brahms/choudharys/data/Parsebio_Reference/Mus_musculus.GRCm39.108.gtf.gz"
   gtf.gr <- import(con = gtf, format = "gtf")
 
   gene_map <- mcols(x = gtf.gr)[, c("gene_id", "gene_name", "gene_biotype")] %>%
