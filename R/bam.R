@@ -88,16 +88,13 @@ CountReadsinParsebioBam <- function(file,
     message("Reading bam ...")
   }
   alignments <- readGAlignments(file = file, param = param)
-  df <- mcols(x = alignments) %>% as.data.frame()
-
-  query_names <- df$qname
   if (verbose) {
     message("Extracting read names ...")
   }
+  df <- mcols(x = alignments) %>% as.data.frame()
+  query_names <- df$qname
   name_split <- str_split_fixed(string = query_names, pattern = name.sep, n = Inf)
-
   read_type <- name_split[, readtype.num]
-
   if (verbose) {
     message("Creating mapping summary ...")
   }

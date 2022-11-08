@@ -106,7 +106,7 @@ CollapseKmerCounts <- function(kmers, counts) {
   # return(kmer_counts)
   kmer_counts.df <- as.data.frame(x = t(x = data.frame(kmer_counts)))
   colnames(x = kmer_counts.df)[1] <- "count"
-  kmer_counts.df$kmer <- rownames(x = kmer_counts.df)
+  kmer_counts.df$polyN <- rownames(x = kmer_counts.df)
   kmer_counts.df <- kmer_counts.df[, c("polyN", "count")]
   return(kmer_counts.df)
 }
