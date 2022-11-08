@@ -64,7 +64,7 @@ SplitParsebioBam <- function(file,
 #' @importFrom dplyr filter group_by summarise n rename arrange
 #' @importFrom magrittr %>%
 #' @importFrom stringr str_split
-#' @importFrom Rsamtools ScanBamParam
+#' @importFrom Rsamtools ScanBamParam scanBamFlag
 #' @importFrom S4Vectors mcols
 #' @importFrom GenomicAlignments coverage readGAlignmentPairs readGAlignments
 #' @export
@@ -73,8 +73,17 @@ CountReadsinParsebioBam <- function(file,
                                     name.sep = "__",
                                     readtype.num = 2,
                                     cells = NULL, verbose = TRUE) {
-  param <- ScanBamParam( # tag=c("nM",  "GX", "GN", "pN", "CB"),
-    tag = c("GX", "GN", "pN", "CB")
+  what <- c("qname", "flag", "mapq")
+  flag <- scanBamFlag(
+    isSecondaryAlignment = FALSE,
+    isUnmappedQuery = FALSE,
+    isNotPassingQualityControls = FALSE,
+    isSupplementaryAlignment = FALSE
+  )
+  param <- ScanBamParam(
+    flag = flag,
+    tag = c("GX", "GN", "pN", "RE", "CB"),
+    what = what
   )
   if (verbose) {
     message("Reading bam ...")
