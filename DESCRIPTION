@@ -1,6 +1,6 @@
 Package: pertinent
 Title: Collection of useful functions for processing single-cell data
-Version: 0.0.0.9003
+Version: 0.0.0.9004
 Authors@R: 
     person(given = "Saket",
            family = "Choudhary",
@@ -8,15 +8,15 @@ Authors@R:
            email = "saketkc@gmail.com",
            comment = c(ORCID = "0000-0001-5202-7633"))
 Imports:
+    data.table,
     tidyverse,
     ggplot2,
-    Seurat,
-    Matrix,
-    data.table,
-    Signac
+    Matrix
 Suggests:
   tximport,
   DropletUtils,
+  Seurat,
+  Signac,
   SeuratDisk,
   metacell
 Description: Collection of useful functions for processing single-cell data.
