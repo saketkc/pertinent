@@ -4,7 +4,7 @@
 \alias{EstimateNBPhi}
 \title{Estimate phi based on a linear fit to mean-variance relationship}
 \usage{
-EstimateNBPhi(mean, variance)
+EstimateNBPhi(mean, variance, robust = TRUE)
 }
 \description{
 Estimate phi based on a linear fit to mean-variance relationship

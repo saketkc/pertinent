@@ -1,10 +1,15 @@
 #' Estimate phi based on a linear fit to mean-variance relationship
+#' @importFrom MASS rlm
 #' @export
-EstimateNBPhi <- function(mean, variance) {
+EstimateNBPhi <- function(mean, variance, robust = TRUE) {
   # fits a linear model on variance ~ mu + phi*mu^2 to estimate phi (which is
   # 1/theta)
   var_res <- variance - mean
-  fit <- lm(formula = var_res ~ 0 + I(mean^2))
+  if (robust) {
+    fit <- suppressWarnings(expr = rlm(formula = var_res ~ 0 + I(mean^2), init = "lts"))
+  } else {
+    fit <- lm(formula = var_res ~ 0 + I(mean^2))
+  }
   phi <- fit$coefficients[[1]]
   return(data.frame(phi = phi, fit = (mean + phi * mean^2)))
 }
@@ -30,11 +35,11 @@ MeanVarFit <- function(counts = NULL, means = NULL, variance = NULL) {
 }
 
 
-
 #' Plot mean variance relationship for counts or dataframe
 #' @importFrom sparseMatrixStats rowMeans2 rowVars
+#' @importFrom ggplot2 ggplot aes geom_point geom_line ggtitle xlab ylab theme scale_color_manual
 #' @export
-MeanVarPlot <- function(counts = NULL, df = NULL, annotate = FALSE, logxy = F) {
+MeanVarPlot <- function(counts = NULL, df = NULL, annotate = FALSE, logxy = T) {
   if (is.null(x = df)) {
     means <- rowMeans2(x = counts)
     variance <- rowVars(x = counts)
@@ -56,7 +61,7 @@ MeanVarPlot <- function(counts = NULL, df = NULL, annotate = FALSE, logxy = F) {
 
   p <- ggplot(df, aes(x = mean, y = variance, color = "d", label = label)) +
     geom_point(
-      alpha = 0.1,
+      alpha = 0.5,
       shape = 16,
       color = "black"
     )
@@ -66,9 +71,11 @@ MeanVarPlot <- function(counts = NULL, df = NULL, annotate = FALSE, logxy = F) {
   }
   p <- p + geom_line(aes(x = mean, y = mean, color = "a"), size = 1.2, show.legend = T) +
     geom_line(aes(x = mean, y = fit, color = "b"), size = 1.2, show.legend = T) +
-    xlab("Mean") + ylab("Variance") + ggtitle("Mean-var")
+    xlab("Mean") +
+    ylab("Variance") +
+    ggtitle("")
   p <- p + scale_color_manual(
-    name = "", values = c(a = "#e41a1c", b = "#377eb8", d = "black"),
+    name = "", values = c(a = "#1A85FF", b = "#D41159", d = "black"),
     labels = c("Poisson-fit", paste0("NB-fit (phi=", round(phi, 1), ")"), "Gene")
   ) +
     theme(legend.position = "bottom")
@@ -79,9 +86,10 @@ MeanVarPlot <- function(counts = NULL, df = NULL, annotate = FALSE, logxy = F) {
   return(p)
 }
 
+#' Plot expected vs observed dropouts (zero observation)
 #' @importFrom sparseMatrixStats rowMeans2 rowVars
+#' @importFrom ggplot2 ggplot aes geom_point geom_line ggtitle xlab ylab theme scale_color_manual
 #' @export
-
 DropoutPlot <- function(counts = NULL, annotate = FALSE) {
   n_cells <- dim(counts)[2]
   means <- rowMeans2(x = counts)
@@ -92,28 +100,34 @@ DropoutPlot <- function(counts = NULL, annotate = FALSE) {
     gene = rownames(counts)
   )
   fit <- EstimateNBPhi(means, variance)
-  phi <- fit[["phi"]]
+  phi <- fit$phi
 
   dropouts.df$nb_expected_dropout <- (1 / (phi * means + 1))^(1 / phi)
-
   dropouts.df$pois_expected_dropout <- exp(-dropouts.df$mean)
 
-  expected_over_observed <- log1p(dropouts.df$obs_dropout) - log1p(dropouts.df$pois_expected_dropout)
+  expected_over_observed <- log1p(x = dropouts.df$obs_dropout) - log1p(x = dropouts.df$pois_expected_dropout)
   index <- expected_over_observed > 0.2
   dropouts.df$label <- ""
   dropouts.df$label[index] <- dropouts.df$gene[index]
 
   p_counts <- ggplot(dropouts.df, aes(x = mean, y = obs_dropout, color = "d", label = label)) +
-    geom_point(alpha = 0.5)
+    geom_point(
+      alpha = 0.5,
+      shape = 16,
+      color = "black"
+    )
   if (annotate) {
     p_counts <- p_counts + geom_text_repel()
   }
-  p_counts <- p_counts + geom_line(aes(x = mean, y = pois_expected_dropout, color = "a"), size = 1.2, show.legend = T) +
+  p_counts <- p_counts +
+    geom_line(aes(x = mean, y = pois_expected_dropout, color = "a"), size = 1.2, show.legend = T) +
     geom_line(aes(x = mean, y = nb_expected_dropout, color = "b"), size = 1.2, show.legend = T) +
-    xlab("mean") + ylab("Dropout probability") + ggtitle("") +
+    xlab("mean") +
+    ylab("Dropout probability") +
+    ggtitle("") +
     scale_color_manual(
       name = "",
-      values = c("a" = "red", "b" = "blue", "d" = "black"),
+      values = c(a = "#1A85FF", b = "#D41159", "d" = "black"),
       labels = c("Poisson-fit", paste0("NB-fit (phi=", round(phi, 1), ")"), "Gene")
     ) + theme(legend.position = "bottom")
   return(p_counts)
