@@ -4,7 +4,7 @@
 \alias{make.sparse}
 \title{Convert matrix to sparse matrix}
 \usage{
-make.sparse(mat)
+make.sparse(mat, Class = "CsparseMatrix")
 }
 \description{
 Convert matrix to sparse matrix

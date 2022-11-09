@@ -59,7 +59,39 @@ SparseSpearmanCor <- function(X, Y = NULL, cov = FALSE) {
 
 #' Convert matrix to sparse matrix
 #' @export
-make.sparse <- function(mat) {
-  mat <- as(object = mat, Class = "Matrix")
-  return(as(object = as(object = as(object = mat, Class = "dMatrix"), Class = "generalMatrix"), Class = "CsparseMatrix"))
+make.sparse <- function(mat, Class = "CsparseMatrix") {
+  # mat <- as(object = mat, Class = "Matrix")
+  return(as(object = as(object = as(object = mat, Class = "dMatrix"), Class = "generalMatrix"), Class = Class))
+}
+
+#' Convert a sparse matrix to a dataframe long form
+#' @export
+SparseMatrixToDF <- function(mat) {
+  mat <- make.sparse(mat = mat, Class = "TsparseMatrix")
+  df <- data.frame(row = rownames(x = mat)[mat@i + 1], column = colnames(x = mat)[mat@j + 1], value = mat@x)
+  return(df)
+}
+
+#' Convert NAs with zero
+#' @export
+NAToZero <- function(mat) {
+  mat <- replace(mat, is.na(x = mat), 0)
+  return(mat)
+}
+
+
+#' Convert mean and variance calculated on non-zero entries into
+#' mean and variance if zeroes were to be included. This method is
+#' useful when mean and variance are calculated for features in a data
+#' frame where the zero entries have been dropped such as when using the
+#' \code{SparseMatrixToDF} method.
+#' @param nzmean Mean of non-zero entries
+#' @param nzvar Mean of non-zero entries
+#' @param n Number of non-zero entries
+#' @param z Number of zero entries
+#' @export
+NZstatsToZstats <- function(nzmean, nzvariance, n, z) {
+  mean_with_zeros <- n * nzmean / (n + z)
+  var_with_zeros <- n * (nzvariance + (nzmean)^2) / (n + z) - mean_with_zeros^2
+  return(data.frame(mean = mean_with_zeros, variance = var_with_zeros))
 }
