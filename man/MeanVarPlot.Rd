@@ -4,7 +4,13 @@
 \alias{MeanVarPlot}
 \title{Plot mean variance relationship for counts or dataframe}
 \usage{
-MeanVarPlot(counts = NULL, df = NULL, annotate = FALSE, logxy = T)
+MeanVarPlot(
+  counts = NULL,
+  df = NULL,
+  group.by = NULL,
+  annotate = FALSE,
+  logxy = T
+)
 }
 \description{
 Plot mean variance relationship for counts or dataframe

@@ -37,20 +37,26 @@ MeanVarFit <- function(counts = NULL, means = NULL, variance = NULL) {
 
 #' Plot mean variance relationship for counts or dataframe
 #' @importFrom sparseMatrixStats rowMeans2 rowVars
+#' @importFrom dplyr group_by across all_of
 #' @importFrom ggplot2 ggplot aes geom_point geom_line ggtitle xlab ylab theme scale_color_manual
 #' @export
-MeanVarPlot <- function(counts = NULL, df = NULL, annotate = FALSE, logxy = T) {
+MeanVarPlot <- function(counts = NULL, df = NULL, group.by = NULL, annotate = FALSE, logxy = T) {
   if (is.null(x = df)) {
     means <- rowMeans2(x = counts)
     variance <- rowVars(x = counts)
     df <- data.frame(mean = means, variance = variance, gene = rownames(counts))
+  }
+  if (!is.null(group.by)) {
+    df <- df %>%
+      group_by(across(all_of(group.by))) %>%
+      mutate(EstimateNBPhi(mean, variance))
   }
   fit <- EstimateNBPhi(df$mean, df$variance)
   phi <- fit$phi
   df$fit <- fit$fit
 
   # this is (mu+mu^2*phi)/mu-1
-  genewise_phi <- (variance / means - 1) / means
+  genewise_phi <- (df$variance / df$mean - 1) / df$mean
   compare_phi <- genewise_phi / fit$phi
   compare_phi[is.na(compare_phi)] <- 0
   index <- genewise_phi > quantile(genewise_phi, 0.999, na.rm = T)[[1]]
@@ -66,6 +72,9 @@ MeanVarPlot <- function(counts = NULL, df = NULL, annotate = FALSE, logxy = T) {
       color = "black"
     )
 
+  if (!is.null(group.by)) {
+    p <- p + facet_wrap(as.formula(object = paste("~", group.by)), scales = "free")
+  }
   if (annotate) {
     p <- p + geom_text_repel()
   }
@@ -74,6 +83,7 @@ MeanVarPlot <- function(counts = NULL, df = NULL, annotate = FALSE, logxy = T) {
     xlab("Mean") +
     ylab("Variance") +
     ggtitle("")
+
   p <- p + scale_color_manual(
     name = "", values = c(a = "#1A85FF", b = "#D41159", d = "black"),
     labels = c("Poisson-fit", paste0("NB-fit (phi=", round(phi, 1), ")"), "Gene")
@@ -90,7 +100,7 @@ MeanVarPlot <- function(counts = NULL, df = NULL, annotate = FALSE, logxy = T) {
 #' @importFrom sparseMatrixStats rowMeans2 rowVars
 #' @importFrom ggplot2 ggplot aes geom_point geom_line ggtitle xlab ylab theme scale_color_manual
 #' @export
-DropoutPlot <- function(counts = NULL, annotate = FALSE) {
+DropoutPlot <- function(counts = NULL, annotate = FALSE, logx = TRUE) {
   n_cells <- dim(counts)[2]
   means <- rowMeans2(x = counts)
   variance <- rowVars(x = counts)
@@ -130,6 +140,9 @@ DropoutPlot <- function(counts = NULL, annotate = FALSE) {
       values = c(a = "#1A85FF", b = "#D41159", "d" = "black"),
       labels = c("Poisson-fit", paste0("NB-fit (phi=", round(phi, 1), ")"), "Gene")
     ) + theme(legend.position = "bottom")
+  if (logx) {
+    p_counts <- p_counts + scale_x_log10()
+  }
   return(p_counts)
 }
 
