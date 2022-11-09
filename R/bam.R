@@ -1,6 +1,6 @@
 #' Split parsebio bam based on HexR or PolyT priming
 #' @importFrom stringr str_split_fixed
-#' @importFrom  rtracklayer export
+#' @importFrom rtracklayer export
 #' @importFrom Rsamtools ScanBamParam
 #' @importFrom S4Vectors mcols
 #' @importFrom GenomicAlignments coverage readGAlignmentPairs readGAlignments
@@ -115,6 +115,57 @@ CountReadsinParsebioBam <- function(file,
   #   rename(gene_id = GX, gene_name = GN)
   return(df_filtered)
 }
+
+#' Split any bam
+#' @importFrom dplyr filter left_join
+#' @importFrom future nbrOfWorkers future_lapply
+#' @importFrom pbapply pbapply
+#' @importFrom magrittr %>%
+#' @importFrom rtracklayer export
+#' @importFrom data.table fread setDF
+#' @importFrom Rsamtools ScanBamParam scanBamFlag
+#' @importFrom S4Vectors mcols
+#' @importFrom GenomicAlignments readGAlignments
+#' @export
+#'
+SplitBam <- function(file, barcodes, out.dir, bam.tag="CB", verbose=TRUE){
+  flag <- scanBamFlag(
+    isSecondaryAlignment = FALSE,
+    isUnmappedQuery = FALSE,
+    isNotPassingQualityControls = FALSE,
+    isSupplementaryAlignment = FALSE
+  )
+  param <- ScanBamParam(tag = c(bam.tag), flag = flag)
+  if (verbose) {
+    message("Reading bam ...")
+  }
+  alignments <- readGAlignments(file = file, use.names = T, param = param)
+
+  bam_barcodes <- mcols(x = alignments)[, bam.tag] %>% as.data.frame()
+  colnames(x = bam_barcodes) <- "barcode"
+  alignments@elementMetadata$barcode <- bam_barcodes$barcode
+
+  given_barcodes <- setDF(x = fread(file = barcodes, header = FALSE))
+  colnames(x = given_barcodes) <- c("barcode", "group")
+  barcodes_to_write <- left_join(x = given_barcodes %>% distinct(), y = bam_barcodes %>% distinct(), by="barcode")
+  barcodes_to_write_list <- barcodes_to_write %>% group_by(group) %>% summarise(barcodes = paste0(barcode, collapse=",")) %>% pull(barcodes, group) %>% as.list()
+  split_barcodes <- function(x, split=","){
+    return (unlist(x = strsplit(x = x, split = split)))
+  }
+  barcodes_to_write_list <- lapply(barcodes_to_write_list, FUN = split_barcodes)
+  if (nbrOfWorkers()>1){
+    mylapply <- future_lapply
+    } else {
+      mylapply <- pblapply
+  }
+  results <- mylapply(X = names(x=barcodes_to_write_list), FUN = function(group) {
+    cat(group)
+    alignments_shortlist <- alignments[alignments@elementMetadata$barcode %in% barcodes_to_write_list[[group]]]
+    export(object = alignments_shortlist, con = file.path(out.dir, paste0(group, ".bam")), format = "bam")
+  } )
+}
+
+
 #' Convert BAM to bigwig
 #' @importFrom  rtracklayer export.bw
 #' @importFrom GenomicAlignments coverage readGAlignmentPairs readGAlignments
