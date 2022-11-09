@@ -40,7 +40,7 @@ MeanVarFit <- function(counts = NULL, means = NULL, variance = NULL) {
 #' @importFrom dplyr group_by across all_of
 #' @importFrom ggplot2 ggplot aes geom_point geom_line ggtitle xlab ylab theme scale_color_manual
 #' @export
-MeanVarPlot <- function(counts = NULL, df = NULL, group.by = NULL, annotate = FALSE, logxy = T) {
+MeanVarPlot <- function(counts = NULL, df = NULL, group.by = NULL, annotate = FALSE, linewidth = 0.75, logxy = T) {
   if (is.null(x = df)) {
     means <- rowMeans2(x = counts)
     variance <- rowVars(x = counts)
@@ -78,19 +78,22 @@ MeanVarPlot <- function(counts = NULL, df = NULL, group.by = NULL, annotate = FA
   if (annotate) {
     p <- p + geom_text_repel()
   }
-  p <- p + geom_line(aes(x = mean, y = mean, color = "a"), size = 1.2, show.legend = T) +
-    geom_line(aes(x = mean, y = fit, color = "b"), size = 1.2, show.legend = T) +
+  p <- p +
+    geom_line(aes(x = mean, y = mean, color = "a"), size = linewidth, show.legend = T) +
+    geom_line(aes(x = mean, y = fit, color = "b"), size = linewidth, show.legend = T) +
     xlab("Mean") +
     ylab("Variance") +
     ggtitle("")
 
-  p <- p + scale_color_manual(
-    name = "", values = c(a = "#1A85FF", b = "#D41159", d = "black"),
-    labels = c("Poisson-fit", paste0("NB-fit (phi=", round(phi, 1), ")"), "Gene")
-  ) +
+  p <- p +
+    scale_color_manual(
+      name = "", values = c(a = "#1A85FF", b = "#D41159", d = "black"),
+      labels = c("Poisson-fit", paste0("NB-fit (phi=", round(phi, 1), ")"), "Gene")
+    ) +
     theme(legend.position = "bottom")
   if (logxy) {
-    p <- p + scale_x_log10() +
+    p <- p +
+      scale_x_log10() +
       scale_y_log10()
   }
   return(p)
@@ -100,7 +103,7 @@ MeanVarPlot <- function(counts = NULL, df = NULL, group.by = NULL, annotate = FA
 #' @importFrom sparseMatrixStats rowMeans2 rowVars
 #' @importFrom ggplot2 ggplot aes geom_point geom_line ggtitle xlab ylab theme scale_color_manual
 #' @export
-DropoutPlot <- function(counts = NULL, annotate = FALSE, logx = TRUE) {
+DropoutPlot <- function(counts = NULL, annotate = FALSE, logx = TRUE, linewidth = 0.75) {
   n_cells <- dim(counts)[2]
   means <- rowMeans2(x = counts)
   variance <- rowVars(x = counts)
@@ -130,8 +133,8 @@ DropoutPlot <- function(counts = NULL, annotate = FALSE, logx = TRUE) {
     p_counts <- p_counts + geom_text_repel()
   }
   p_counts <- p_counts +
-    geom_line(aes(x = mean, y = pois_expected_dropout, color = "a"), size = 1.2, show.legend = T) +
-    geom_line(aes(x = mean, y = nb_expected_dropout, color = "b"), size = 1.2, show.legend = T) +
+    geom_line(aes(x = mean, y = pois_expected_dropout, color = "a"), size = linewidth, show.legend = T) +
+    geom_line(aes(x = mean, y = nb_expected_dropout, color = "b"), size = linewidth, show.legend = T) +
     xlab("mean") +
     ylab("Dropout probability") +
     ggtitle("") +
