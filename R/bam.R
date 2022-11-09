@@ -106,7 +106,7 @@ CountReadsinParsebioBam <- function(file,
     df_filtered <- df_filtered %>% filter(CB %in% cells)
   }
   if (verbose) {
-    message("Summarising ...")
+    message("Done.")
   }
   # df_summary <- df_filtered %>%
   #   group_by(GX, GN, read_type) %>%
@@ -118,7 +118,8 @@ CountReadsinParsebioBam <- function(file,
 
 #' Split any bam
 #' @importFrom dplyr filter left_join
-#' @importFrom future nbrOfWorkers future_lapply
+#' @importFrom future nbrOfWorkers
+#' @importFrom future.apply future_lapply
 #' @importFrom pbapply pbapply
 #' @importFrom magrittr %>%
 #' @importFrom rtracklayer export
@@ -128,7 +129,7 @@ CountReadsinParsebioBam <- function(file,
 #' @importFrom GenomicAlignments readGAlignments
 #' @export
 #'
-SplitBam <- function(file, barcodes, out.dir, bam.tag="CB", verbose=TRUE){
+SplitBam <- function(file, barcodes, out.dir, bam.tag = "CB", verbose = TRUE) {
   flag <- scanBamFlag(
     isSecondaryAlignment = FALSE,
     isUnmappedQuery = FALSE,
@@ -147,22 +148,25 @@ SplitBam <- function(file, barcodes, out.dir, bam.tag="CB", verbose=TRUE){
 
   given_barcodes <- setDF(x = fread(file = barcodes, header = FALSE))
   colnames(x = given_barcodes) <- c("barcode", "group")
-  barcodes_to_write <- left_join(x = given_barcodes %>% distinct(), y = bam_barcodes %>% distinct(), by="barcode")
-  barcodes_to_write_list <- barcodes_to_write %>% group_by(group) %>% summarise(barcodes = paste0(barcode, collapse=",")) %>% pull(barcodes, group) %>% as.list()
-  split_barcodes <- function(x, split=","){
-    return (unlist(x = strsplit(x = x, split = split)))
+  barcodes_to_write <- left_join(x = given_barcodes %>% distinct(), y = bam_barcodes %>% distinct(), by = "barcode")
+  barcodes_to_write_list <- barcodes_to_write %>%
+    group_by(group) %>%
+    summarise(barcodes = paste0(barcode, collapse = ",")) %>%
+    pull(barcodes, group) %>%
+    as.list()
+  split_barcodes <- function(x, split = ",") {
+    return(unlist(x = strsplit(x = x, split = split)))
   }
   barcodes_to_write_list <- lapply(barcodes_to_write_list, FUN = split_barcodes)
-  if (nbrOfWorkers()>1){
+  if (nbrOfWorkers() > 1) {
     mylapply <- future_lapply
-    } else {
-      mylapply <- pblapply
+  } else {
+    mylapply <- pblapply
   }
-  results <- mylapply(X = names(x=barcodes_to_write_list), FUN = function(group) {
-    cat(group)
+  results <- mylapply(X = names(x = barcodes_to_write_list), FUN = function(group) {
     alignments_shortlist <- alignments[alignments@elementMetadata$barcode %in% barcodes_to_write_list[[group]]]
-    export(object = alignments_shortlist, con = file.path(out.dir, paste0(group, ".bam")), format = "bam")
-  } )
+    suppressMessages(expr = suppressWarnings(expr = export(object = alignments_shortlist, con = file.path(out.dir, paste0(group, ".bam")), format = "bam")))
+  })
 }
 
 
