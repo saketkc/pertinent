@@ -11,6 +11,7 @@ VisualizeWigCoverage(
   gtf = NULL,
   exons.gr = NULL,
   tx.ids = NULL,
+  heights = c(2, 1),
   ...
 )
 }
