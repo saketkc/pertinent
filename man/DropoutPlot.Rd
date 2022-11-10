@@ -4,7 +4,7 @@
 \alias{DropoutPlot}
 \title{Plot expected vs observed dropouts (zero observation)}
 \usage{
-DropoutPlot(counts = NULL, annotate = FALSE, logx = TRUE)
+DropoutPlot(counts = NULL, annotate = FALSE, logx = TRUE, linewidth = 0.75)
 }
 \description{
 Plot expected vs observed dropouts (zero observation)

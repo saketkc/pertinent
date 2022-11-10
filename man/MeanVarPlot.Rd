@@ -9,6 +9,7 @@ MeanVarPlot(
   df = NULL,
   group.by = NULL,
   annotate = FALSE,
+  linewidth = 0.75,
   logxy = T
 )
 }
