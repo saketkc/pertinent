@@ -12,6 +12,8 @@ SplitParsebioBam(
     ignore.case = TRUE),
   name.sep = "__",
   readtype.num = 2,
+  barcode.tag = "CB",
+  cells.subset = NULL,
   metadata = NULL,
   group.by = NULL,
   verbose = TRUE

@@ -11,31 +11,50 @@ SplitParsebioBam <- function(file,
                              polyT.out = gsub(pattern = "\\.bam$", replacement = "_polyT.bam", x = file, ignore.case = TRUE),
                              name.sep = "__",
                              readtype.num = 2,
+                             barcode.tag = "CB",
+                             cells.subset = NULL,
                              metadata = NULL,
                              group.by = NULL,
                              verbose = TRUE) {
-  param <- ScanBamParam( # tag=c("nM",  "GX", "GN", "pN", "CB"),
-    tag = c("CB")
+  what <- c("flag", "mapq")
+
+  flag <- scanBamFlag(
+    isSecondaryAlignment = FALSE,
+    isUnmappedQuery = FALSE,
+    isNotPassingQualityControls = FALSE,
+    isSupplementaryAlignment = FALSE
   )
+  param <- ScanBamParam(flag = flag, tag = c(barcode.tag), what = what)
+
   if (verbose) {
     message("Reading bam ...")
   }
   alignments <- readGAlignments(file = file, use.names = T, param = param)
-
+  alignments <- alignments[alignments@elementMetadata$mapq >= 255]
   query_names <- alignments@NAMES
   if (verbose) {
     message("Extracting read names ...")
   }
   name_split <- str_split_fixed(string = query_names, pattern = name.sep, n = Inf)
 
-  barcode <- mcols(x = alignments)[, "CB"] # name_split[, barcode.num]
+  barcode <- mcols(x = alignments)[, barcode.tag]
   read_type <- name_split[, readtype.num]
 
   alignments@elementMetadata$barcode <- barcode
   alignments@elementMetadata$read_type <- read_type
 
-  hexR_alignments <- alignments[read_type == "R"]
-  polyT_alignments <- alignments[read_type == "T"]
+  if (!is.null(x = cells.subset)) {
+    if (verbose) {
+      message("Filtering cells")
+    }
+    alignments <- alignments[alignments@elementMetadata$barcode %in% cells.subset]
+  }
+
+  if (verbose) {
+    message("Filtering alignments")
+  }
+  hexR_alignments <- alignments[alignments@elementMetadata$read_type == "R"]
+  polyT_alignments <- alignments[alignments@elementMetadata$read_type == "T"]
 
   if (!is.null(metadata) && !is.null(group.by)) {
     groups <- unique(x = metadata[[group.by]])
@@ -129,20 +148,20 @@ CountReadsinParsebioBam <- function(file,
 #' @importFrom GenomicAlignments readGAlignments
 #' @export
 #'
-SplitBam <- function(file, barcodes, out.dir, bam.tag = "CB", verbose = TRUE) {
+SplitBam <- function(file, barcodes, out.dir, barcode.tag = "CB", verbose = TRUE) {
   flag <- scanBamFlag(
     isSecondaryAlignment = FALSE,
     isUnmappedQuery = FALSE,
     isNotPassingQualityControls = FALSE,
     isSupplementaryAlignment = FALSE
   )
-  param <- ScanBamParam(tag = c(bam.tag), flag = flag)
+  param <- ScanBamParam(tag = c(barcode.tag), flag = flag)
   if (verbose) {
     message("Reading bam ...")
   }
   alignments <- readGAlignments(file = file, use.names = T, param = param)
 
-  bam_barcodes <- mcols(x = alignments)[, bam.tag] %>% as.data.frame()
+  bam_barcodes <- mcols(x = alignments)[, barcode.tag] %>% as.data.frame()
   colnames(x = bam_barcodes) <- "barcode"
   alignments@elementMetadata$barcode <- bam_barcodes$barcode
 

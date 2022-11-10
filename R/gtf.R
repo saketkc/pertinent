@@ -34,5 +34,5 @@ ParseGTF <- function(gtf) {
     left_join(y = tx_map) %>%
     select(transcript_id, gene_id, gene_name, gene_biotype, tx_len, cds_len, utr5_len, utr3_len) %>%
     arrange(gene_name, gene_id)
-  return(list(tx_lengths = tx_lengths, txdb = txdb))
+  return(list(tx_lengths = tx_lengths, txdb = txdb, tx = grl))
 }

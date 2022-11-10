@@ -4,7 +4,7 @@
 \alias{SplitBam}
 \title{Split any bam}
 \usage{
-SplitBam(file, barcodes, out.dir, bam.tag = "CB", verbose = TRUE)
+SplitBam(file, barcodes, out.dir, barcode.tag = "CB", verbose = TRUE)
 }
 \description{
 Split any bam
