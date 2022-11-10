@@ -4,7 +4,7 @@
 \alias{ParseGTF}
 \title{Get longest isoform per gene}
 \usage{
-ParseGTF(gtf)
+ParseGTF(gtf, seqlevels_prefix = NULL)
 }
 \description{
 Get longest isoform per gene

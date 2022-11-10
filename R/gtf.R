@@ -9,11 +9,15 @@ ReplaceMissingEntries <- function(df, col.source, col.target) {
 #' @importFrom GenomicFeatures  makeTxDbFromGFF transcriptsBy transcriptLengths
 #' @importFrom rtracklayer import
 #' @importFrom S4Vectors mcols splitAsList
+#' @importFrom GenomeInfoDb seqlevels
 #' @importFrom magrittr %>%
 #' @importFrom dplyr arrange distinct filter left_join rename select
 #' @export
-ParseGTF <- function(gtf) {
+ParseGTF <- function(gtf, seqlevels_prefix = NULL) {
   gtf.gr <- import(con = gtf, format = "gtf")
+  if (!is.null(x = seqlevels_prefix)){
+    seqlevels(x = gtf.gr) <- paste0(seqlevels_prefix, seqlevels(x = gtf.gr))
+  }
   gene_map <- mcols(x = gtf.gr)[, c("gene_id", "gene_name", "gene_biotype")] %>%
     as.data.frame() %>%
     distinct() %>%
@@ -26,6 +30,9 @@ ParseGTF <- function(gtf) {
     arrange(gene_id, transcript_id)
   tx_map <- ReplaceMissingEntries(tx_map, col.source = "gene_id", col.target = "gene_name")
   txdb <- suppressWarnings(expr = makeTxDbFromGFF(file = gtf, format = "gtf"))
+  if (!is.null(x = seqlevels_prefix)){
+    seqlevels(x = txdb) <- paste0(seqlevels_prefix, seqlevels(x = txdb))
+  }
   grl <- transcriptsBy(txdb, by = "gene")
   tx_lengths <- transcriptLengths(txdb = txdb, with.cds_len = TRUE, with.utr5_len = TRUE, with.utr3_len = TRUE) %>%
     rename(transcript_id = tx_name) %>%
