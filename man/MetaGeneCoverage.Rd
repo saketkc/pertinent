@@ -4,7 +4,7 @@
 \alias{MetaGeneCoverage}
 \title{Plot bigwig coverage as metagene}
 \usage{
-MetaGeneCoverage(bigwig.file, gtf.data)
+MetaGeneCoverage(bigwig.file, gtf.data, normalization.method = "max")
 }
 \description{
 Plot bigwig coverage as metagene

@@ -42,7 +42,7 @@ VisualizeWigCoverage <- function(track.data, gene.name, gtf.data = NULL, gtf = N
 #' @importFrom GenomicFeatures exonsBy
 #' @importFrom Hmisc cut2
 #' @export
-MetaGeneCoverage <- function(bigwig.file, gtf.data) {
+MetaGeneCoverage <- function(bigwig.file, gtf.data, normalization.method = "max") {
   tx.pc <- gtf.data$tx_lengths %>%
     filter(gene_biotype == "protein_coding") %>%
     group_by(gene_id, gene_name) %>%
@@ -65,7 +65,16 @@ MetaGeneCoverage <- function(bigwig.file, gtf.data) {
         data <- rev(x = data)
       }
       # Normalized in range of 0-1
-      data_normalized <- data / max(data)
+      if (normalization.method == "max") {
+        data_normalized <- data / max(data)
+      } else if (normalization.method == "sum") {
+        data_normalized <- data/ sum(data)
+      } else if (normalization.method == "median") {
+        data_normalized <- data/ median(data)
+      } else if (normalization.method == "mean"){
+        data_normalized <- data/ mean(data)
+      }
+
       df <- data.frame(x = 1:length(x = data_normalized), values = data_normalized)
       df$cut <- as.numeric(x = cut2(x = df$x, g = 100))
       df <- df %>%
