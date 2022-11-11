@@ -49,38 +49,35 @@ MetaGeneCoverage <- function(bigwig.file, gtf.data) {
     top_n(wt = tx_len, n = 1) %>%
     filter(row_number() == 1)
   exons.gr <- exonsBy(x = gtf.data[["txdb"]], by = "tx", use.names = TRUE)[tx.pc$transcript_id]
-  bins <- matrix(data = NA, ncol = 100, nrow = length(exons.gr))
-  rownames(bins) <- names(x = exons.gr)
-
+  # bins <- matrix(data = NA, ncol = 100, nrow = length(exons.gr))
+  # rownames(bins) <- names(x = exons.gr)
   if (nbrOfWorkers() > 1) {
     mylapply <- future_lapply
   } else {
     mylapply <- pblapply
   }
-  results <- mylapply(X = names(x = exons.gr), FUN = function(txid) {
-    transcript <- sort(x = exons.gr[[txid]])
+  results <- mylapply(X = exons.gr, FUN = function(transcript) {
+    transcript <- sort(x = transcript)
     tx.strand <- unique(x = as.character(x = strand(x = transcript)))
     data <- unlist(x = import.bw(con = bigwig.file, which = transcript, as = "NumericList"))
-
-    if (length(x = data)<100){
-      next
-    }
-    if (tx.strand == "-") {
-      data <- rev(x = data)
-    }
-    # Normalized in range of 0-1
-    data_normalized <- data / max(data)
-    df <- data.frame(x = 1:length(x=data_normalized), values = data_normalized)
-    df$cut <- as.numeric(x = cut2(x = df$x, g = 100))
-    df <- df %>%
-      group_by(cut) %>%
-      summarise(mean_va = mean(values), sum_va = sum(values)) %>%
-      arrange(cut)
-    if (nrow(df) >= 100) {
-      bins[txid, ] <- df$mean_va
+    if (length(x = data) > 100) {
+      if (tx.strand == "-") {
+        data <- rev(x = data)
+      }
+      # Normalized in range of 0-1
+      data_normalized <- data / max(data)
+      df <- data.frame(x = 1:length(x = data_normalized), values = data_normalized)
+      df$cut <- as.numeric(x = cut2(x = df$x, g = 100))
+      df <- df %>%
+        group_by(cut) %>%
+        summarise(mean_va = mean(values), sum_va = sum(values)) %>%
+        arrange(cut)
+      if (nrow(df) >= 100) {
+        return(df$mean_va)
+      }
     }
   })
-
+  bins <- do.call(what = rbind, args = results)
   bins_normalized <- colMeans(bins, na.rm = T)
   df_coverage <- data.frame(
     quantile = 1:length(bins_normalized),
