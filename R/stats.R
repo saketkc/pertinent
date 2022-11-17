@@ -15,7 +15,7 @@ TauIndex <- function(x) {
   gap <- xsorted[which(gaps == min(gaps))]
   n <- length(x)
   tau <- sum(1 - xhat) / (n - 1)
-  return(list(tau=tau, gap=gap))
+  return(list(tau = tau, gap = gap))
 }
 
 #' Calculate gini index to quantify the specificity of a gene to a cluster
