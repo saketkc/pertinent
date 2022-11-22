@@ -1,6 +1,8 @@
 #' Fetch sequences from a DNAStringSet object
-#' @params genomeseq A DNAStringSet object 
-#' @params gr A granges object
+#' @param genomeseq A DNAStringSet object 
+#' @param gr A granges object
+#' @importFrom magrittr %>%
+#' @importFrom Biostrings reverseComplement
 #' @export
 GetSequencesFromGenome <- function(genomeseq, gr){
   granges.df <- gr %>% as.data.frame()
