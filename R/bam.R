@@ -7,8 +7,14 @@
 #' @export
 #'
 SplitParsebioBam <- function(file,
-                             hexR.out = gsub(pattern = "\\.bam$", replacement = "_hexR.bam", x = file, ignore.case = TRUE),
-                             polyT.out = gsub(pattern = "\\.bam$", replacement = "_polyT.bam", x = file, ignore.case = TRUE),
+                             hexR.out = gsub(pattern = "\\.bam$",
+                                             replacement = "_hexR.bam",
+                                             x = file,
+                                             ignore.case = TRUE),
+                             polyT.out = gsub(pattern = "\\.bam$",
+                                              replacement = "_polyT.bam",
+                                              x = file,
+                                              ignore.case = TRUE),
                              name.sep = "__",
                              readtype.num = 2,
                              barcode.tag = "CB",
@@ -194,7 +200,9 @@ SplitBam <- function(file, barcodes, out.dir, barcode.tag = "CB", verbose = TRUE
 #' @importFrom GenomicAlignments coverage readGAlignmentPairs readGAlignments
 #' @export
 bam2bw <- function(file,
-                   bw.path = gsub(pattern = "\\.bam$", replacement = ".bw", x = file, ignore.case = TRUE),
+                   bw.path = gsub(pattern = "\\.bam$",
+                                  replacement = ".bw",
+                                  x = file, ignore.case = TRUE),
                    paired = FALSE,
                    strand = "both",
                    method = c("native", "deeptools"),

@@ -2,8 +2,7 @@
 % Please edit documentation in R/seqdist.R
 \name{CollapseKmerCounts}
 \alias{CollapseKmerCounts}
-\title{Collpase kmer data for kmers that are within a hamming distance of 1.
-This method is based on collapse_polyN function from Parsebio's splitpipe pipeline.}
+\title{Collpase kmer data for kmers that are within a hamming distance of 1.}
 \usage{
 CollapseKmerCounts(kmers, counts)
 }
@@ -14,5 +13,4 @@ CollapseKmerCounts(kmers, counts)
 }
 \description{
 Collpase kmer data for kmers that are within a hamming distance of 1.
-This method is based on collapse_polyN function from Parsebio's splitpipe pipeline.
 }

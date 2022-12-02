@@ -48,7 +48,6 @@ AppendToDefaultDict <- function(obj.list, key, value) {
 }
 
 #' Collpase kmer data for kmers that are within a hamming distance of 1.
-#' This method is based on collapse_polyN function from Parsebio's splitpipe pipeline.
 #' @param kmers A vector of kmers
 #' @param counts A vecotr of counts associated with kmers
 #' @export
