@@ -15,6 +15,7 @@ TFIDFMarkers <- function(counts,
 
   if (is.null(x = expression.cutoff)) {
     expression.cutoff <- median(x = counts@x) - 1
+    message(paste("Expression cutoff:", expression.cutoff))
   }
   # Total cells in which gene is expressed
   ncells <- ncol(x = counts)
@@ -33,7 +34,7 @@ TFIDFMarkers <- function(counts,
   TF <- sweep(x = ncells.expressed.percelltype, MARGIN = 2, STATS = cluster.counts, FUN = "/")
   TF.other <- sweep(x = ncells.expressed.other, MARGIN = 2, STATS = cluster.counts.other, FUN = "/")
 
-  IDF <- log(ncells / ncells.expressed.all)
+  IDF <- log(x = ncells / ncells.expressed.all)
 
   TF.IDF <- TF * IDF
 
@@ -52,17 +53,17 @@ TFIDFMarkers <- function(counts,
   })
 
 
-  qvalues <- lapply(pvalues, FUN = p.adjust, method = "BH")
+  qvalues <- lapply(X = pvalues, FUN = p.adjust, method = "BH")
   qvalues <- do.call(cbind, qvalues)
   colnames(qvalues) <- colnames(x = TF)
 
   pvalues <- do.call(cbind, pvalues)
   colnames(pvalues) <- colnames(x = TF)
 
-  order.tfidf <- lapply(colnames(x = TF), function(e) {
+  order.tfidf <- lapply(X = colnames(x = TF), FUN = function(e) {
     order(TF.IDF[, e], decreasing = TRUE)
   })
-  order.tfidf2 <- cbind(unlist(order.tfidf, use.names = FALSE), rep(seq_len(length.out = ncol(x = TF)), lengths(order.tfidf)))
+  order.tfidf2 <- cbind(unlist(x = order.tfidf, use.names = FALSE), rep(x = seq_len(length.out = ncol(x = TF)), lengths(order.tfidf)))
 
   de.genes <- rownames(x = TF)[order.tfidf2[, 1]]
   de.clusters <- colnames(x = TF)[order.tfidf2[, 2]]
