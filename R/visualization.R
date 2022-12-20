@@ -70,11 +70,11 @@ MetaGeneCoverage <- function(bigwig.file,
       if (normalization.method == "max") {
         data_normalized <- data / max(data)
       } else if (normalization.method == "sum") {
-        data_normalized <- data/ sum(data)
+        data_normalized <- data / sum(data)
       } else if (normalization.method == "median") {
-        data_normalized <- data/ median(data)
-      } else if (normalization.method == "mean"){
-        data_normalized <- data/ mean(data)
+        data_normalized <- data / median(data)
+      } else if (normalization.method == "mean") {
+        data_normalized <- data / mean(data)
       }
 
       df <- data.frame(x = 1:length(x = data_normalized), values = data_normalized)
