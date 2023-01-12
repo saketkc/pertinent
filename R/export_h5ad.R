@@ -7,6 +7,7 @@
 #' @export
 RDStoH5AD <- function(filepath) {
   h5seurat <- gsub(".rds", ".h5Seurat", filepath)
+  query <- readRDS(filepath)
   DefaultAssay(query) <- "RNA"
   query <- DietSeurat(query, assays = "RNA", scale.data = FALSE, dimreducs = NULL, graphs = NULL)
 

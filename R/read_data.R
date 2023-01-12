@@ -10,7 +10,7 @@ ReadKallistoOutput <- function(barcodes_file, genes_file, mtx_file) {
   mtx <- make.sparse(mat = mtx)
   gene_ids <- read.csv(file = barcodes_file, header = F)$V1
   barcodes <- read.csv(file = genes_file, header = F)$V1
-  rownames(mtx) <- make.unique(names = toupper(x = tx2g[gene_ids, "gene_name"]))
+  # rownames(mtx) <- make.unique(names = toupper(x = tx2g[gene_ids, "gene_name"]))
   colnames(mtx) <- barcodes
   return(mtx)
 }
