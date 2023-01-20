@@ -284,7 +284,7 @@ DoSCT <- function(object) {
 #' @export
 DoLogNorm <- function(object) {
   DefaultAssay(object) <- "RNA"
-  object <- NormalizeData(object)
+  object <- NormalizeData(object, scale.factor = median(object$nCount_RNA))
   object <- FindVariableFeatures(object)
   object <- ScaleData(object)
 
