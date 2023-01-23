@@ -1,4 +1,3 @@
-
 ReplaceMissingEntries <- function(df, col.source, col.target) {
   df[[col.target]][is.na(x = df[[col.target]])] <- df[[col.source]][is.na(x = df[[col.target]])]
   df[[col.target]][df[[col.target]] == ""] <- df[[col.source]][df[[col.target]] == ""]

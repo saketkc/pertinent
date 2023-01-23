@@ -95,3 +95,49 @@ NZstatsToZstats <- function(nzmean, nzvariance, n, z) {
   var_with_zeros <- n * (nzvariance + (nzmean)^2) / (n + z) - mean_with_zeros^2
   return(data.frame(mean = mean_with_zeros, variance = var_with_zeros))
 }
+
+
+#' Merge and add multiple sparse matrices.
+#'
+#' Assuming the rownames are shared across all matrices, this method creates a collated
+#' matrix such that values for shared column names are added while unique columns
+#' for each matrices are retained.
+#' @param matrix.list A list of sparce matrices
+#' @export
+AddMergeSparse <- function(matrix.list) {
+  mtx1 <- matrix.list[[1]]
+
+  for (i in 2:length(matrix.list)) {
+    mtx2 <- matrix.list[[i]]
+    mtx1.rownames <- rownames(mtx1)
+    mtx2.rownames <- rownames(mtx2)
+
+    stopifnot(mtx1.rownames == mtx2.rownames)
+
+    missing.2 <- colnames(mtx1)[!colnames(mtx1) %in% colnames(mtx2)]
+    missing.1 <- colnames(mtx2)[!colnames(mtx2) %in% colnames(mtx1)]
+
+    missing.1.named <- as.vector(x = numeric(length(missing.1)), mode = "list")
+    names(missing.1.named) <- missing.1
+    missing.2.named <- as.vector(x = numeric(length(missing.2)), mode = "list")
+    names(missing.2.named) <- missing.2
+
+    mtx1.expanded <- Reduce(cbind, c(mtx1, missing.1.named))
+    mtx2.expanded <- Reduce(cbind, c(mtx2, missing.2.named))
+    if (length(missing.1.named) > 0) {
+      expanded.length <- ncol(mtx1.expanded) - length(missing.1.named) + 1
+      colnames(mtx1.expanded)[expanded.length:ncol(mtx1.expanded)] <- names(missing.1.named)
+    }
+    if (length(missing.2.named) > 0) {
+      expanded.length <- ncol(mtx2.expanded) - length(missing.2.named) + 1
+      colnames(mtx2.expanded)[expanded.length:ncol(mtx2.expanded)] <- names(missing.2.named)
+    }
+    stopifnot(sort(colnames(mtx1.expanded)) == sort(colnames(mtx1.expanded)))
+
+    mtx1.expanded <- mtx1.expanded[, sort(colnames(mtx1.expanded))]
+    mtx2.expanded <- mtx2.expanded[, sort(colnames(mtx2.expanded))]
+
+    mtx1 <- mtx1.expanded + mtx2.expanded
+  }
+  return(mtx1)
+}
