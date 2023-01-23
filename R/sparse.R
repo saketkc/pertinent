@@ -132,10 +132,10 @@ AddMergeSparse <- function(matrix.list) {
       expanded.length <- ncol(mtx2.expanded) - length(missing.2.named) + 1
       colnames(mtx2.expanded)[expanded.length:ncol(mtx2.expanded)] <- names(missing.2.named)
     }
-    stopifnot(sort(colnames(mtx1.expanded)) == sort(colnames(mtx1.expanded)))
 
     mtx1.expanded <- mtx1.expanded[, sort(colnames(mtx1.expanded))]
     mtx2.expanded <- mtx2.expanded[, sort(colnames(mtx2.expanded))]
+    stopifnot(colnames(mtx1.expanded) == colnames(mtx1.expanded))
 
     mtx1 <- mtx1.expanded + mtx2.expanded
   }
