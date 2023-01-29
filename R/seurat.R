@@ -295,3 +295,14 @@ DoLogNorm <- function(object) {
   object <- FindClusters(object, verbose = FALSE)
   return(object)
 }
+
+#' Variable Feattures for SCT
+#' @export
+#'
+VariableFeaturesSCTModel <- function(object, nfeatures = 3000, ...) {
+  feature.attr <- SCTResults(object = object, slot = "feature.attributes")
+  feature.variance <- feature.attr[, "residual_variance"]
+  names(x = feature.variance) <- row.names(x = feature.attr)
+  feature.variance <- sort(x = feature.variance, decreasing = TRUE)
+  return(head(x = names(x = feature.variance), n = nfeatures))
+}
