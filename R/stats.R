@@ -42,3 +42,37 @@ GiniIndex <- function(x, weights = NULL) {
   gini <- 2 / xbar * sum(weights * (x - xbar) * (Fhat - Fbar))
   return(gini)
 }
+
+#' Calculate reconstruction error for a new dataset given feature loadings
+#' @importFrom Matrix t
+#' @export
+PredictPCA <- function(feature.loadings, newdata) {
+  # rotation is cell embedding
+  # x is gene embedding if using prcomp results
+  new.embeddings <- t(newdata) %*% feature.loadings
+  colnames(new.embeddings) <- colnames(feature.loadings)
+  reconstructed.data <- feature.loadings %*% t(new.embeddings)
+  reconstruction.error <- sum((newdata - reconstructed.data)^2) / ncol(newdata)
+  return(reconstruction.error)
+}
+
+#' Perform PCA and return loadings along with reconstruction error
+#' @importFrom irlba irlba
+#' @importFrom Matrix t
+#' @export
+#'
+ReconErrorPCA <- function(original.data, npcs = 50, weight.by.var = TRUE) {
+  pca.results <- irlba(A = t(x = original.data), nv = npcs)
+  feature.loadings <- pca.results$v
+  sdev <- pca.results$d / sqrt(max(1, ncol(object) - 1))
+  weight.by.var <- TRUE
+  if (weight.by.var) {
+    cell.embeddings <- pca.results$u %*% diag(pca.results$d)
+  } else {
+    cell.embeddings <- pca.results$u
+  }
+
+  reconstructed.data <- feature.loadings %*% t(cell.embeddings)
+  reconstruction.error <- sum((original.data - reconstructed.data)^2) / ncol(original.data)
+  return(list(error = reconstruction.error, feature.loadings = feature.loadings, cell.embeddings = cell.embeddings))
+}

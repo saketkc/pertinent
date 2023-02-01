@@ -100,20 +100,25 @@ MetaGeneCoverage <- function(bigwig.file,
 #' Pseudu bulk heatmap
 #' @importFrom  pheatmap pheatmap
 #' @importFrom Seurat AggregateExpression NormalizeData ScaleData
+#' @importFrom SeuratObject GetAssayData
 PseudoBulkHeatmap <- function(object, aggregate.by,
                               features.to.plot,
-                              assays = "RNA",
+                              assay = "SCT",
                               cellheight = 20,
                               cellwidth = 20,
                               use.scaledata = FALSE,
                               idents.to.plot = NULL) {
-  agg.counts <- AggregateExpression(object = object, assays = assays,
+  agg.counts <- AggregateExpression(object = object, assays = assay, slot = "counts",
                                     group.by = aggregate.by, return.seurat = T)
-  agg.counts <- NormalizeData(agg.counts, scale.factor = median(agg.counts$nCount_RNA))
+  if (assay == "RNA"){
+    agg.counts <- NormalizeData(agg.counts, scale.factor = median(agg.counts$nCount_RNA))
+  }
+
   if (is.null(idents.to.plot)) {
     idents.to.plot <- colnames(agg.counts)
   }
-  data <- agg.counts@assays$RNA@data[features.to.plot, idents.to.plot]
+  #data <- agg.counts@assays$RNA@data[features.to.plot, idents.to.plot]
+  data <- GetAssayData(object = agg.counts, assay=assay, slot="data")
   scaled_data <- ScaleData(data)
   if (use.scaledata) {
     data.to.plot <- scaled_data
