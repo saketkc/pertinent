@@ -77,17 +77,3 @@ ReverseLogNorm <- function(lognorm_data) {
   )
   return(counts.pseudo)
 }
-
-#' Reverse PFLog1pPF normalization
-#' @export
-ReversePFLog1pPF <- function(PFlog1pPF_data) {
-  # does not work
-  log1pPF_data <- SweepSparse(PFlog1pPF_data,
-    MARGIN = 2,
-    STATS = apply(PFlog1pPF_data, FUN = function(col) {
-      min(col[col > 0])
-    }, MARGIN = 2),
-    FUN = "/"
-  )
-  return(ReverseLogNorm(log1pPF_data))
-}
