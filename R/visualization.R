@@ -127,3 +127,22 @@ PseudoBulkHeatmap <- function(object, aggregate.by,
   }
   pheatmap(data.to.plot, cellheight = cellheight, cellwidth = cellwidth)
 }
+
+#' Plot confusion heatmap for comparing the overlap between two sets of predictions
+#' @importFrom  ggplot aaes geom_tile scale_fill_gradient theme xlab ylab element_text
+#' @export
+
+ConfusionHeatmap <- function(predictions.1, predictions.2){
+  predictions <- table(predictions.1, predictions.2)
+  predictions <- predictions/rowSums(predictions)
+  predictions <- as.data.frame(predictions)
+  p <- ggplot(predictions, aes(predictions.1, predictions.2, fill = Freq)) + geom_tile() +
+    scale_fill_gradient(name = "Fraction of cells",
+                        low = "#ffffff", high = "#4a1486") +
+    xlab("predictions.1") +
+    ylab("predictions.2") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size=14, colour = "black", face = "bold"),
+          axis.title.x = element_text(size = 16, color="black", face = "bold"),
+          axis.title.y = element_text(size = 16, color="black", face = "bold"))
+  return(p)
+}
