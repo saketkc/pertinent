@@ -129,7 +129,7 @@ PseudoBulkHeatmap <- function(object, aggregate.by,
 }
 
 #' Plot confusion heatmap for comparing the overlap between two sets of predictions
-#' @importFrom  ggplot aaes geom_tile scale_fill_gradient theme xlab ylab element_text
+#' @importFrom  ggplot2 aes geom_tile scale_fill_gradient theme xlab ylab element_text
 #' @export
 
 ConfusionHeatmap <- function(predictions.1, predictions.2){

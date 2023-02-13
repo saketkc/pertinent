@@ -207,3 +207,53 @@ ReadParsebioOutput <- function(path, add.hexR.assay = TRUE, add.polyT.assay = TR
   }
   return(list(object = seu, summary = gene_summary))
 }
+
+
+#' Read data from alevin-fry
+#' @importFrom magrittr %>%
+#' @importFrom dplyr distinct
+#' @importFrom Matrix t sparse.model.matrix
+#' @export
+ReadAlevin <- function(gtf_ref, frydir, mode = "snRNA") {
+  geneid_to_genename <- gtf_ref %>%
+    as.data.frame() %>%
+    select(gene_id, gene_name) %>%
+    distinct()
+  geneid_to_genename$gene_name[is.na(geneid_to_genename$gene_name)] <- geneid_to_genename$gene_id[is.na(geneid_to_genename$gene_name)]
+  geneid_to_genename$gene_name[geneid_to_genename$gene_name == ""] <- geneid_to_genename$gene_id[geneid_to_genename$gene_name == ""]
+  geneid_to_genename$gene_name <- toupper(geneid_to_genename$gene_name)
+  geneid_to_genename <- geneid_to_genename %>% distinct()
+
+  sce <- fishpond::loadFry(fryDir = frydir, outputFormat = mode)
+  counts.sce <- SingleCellExperiment::counts(sce)
+  counts.sce <- counts.sce[!is.na(rownames(counts.sce)), ]
+  counts.sce <- counts.sce[rownames(counts.sce) %in% geneid_to_genename$gene_id, ]
+  counts.genenames <- geneid_to_genename$gene_name[match(rownames(counts.sce), geneid_to_genename$gene_id)]
+  rownames(counts.sce) <- counts.genenames
+
+  mymodel.matrix <- sparse.model.matrix(
+    object = ~ 0 + counts.genenames
+  )
+  colnames(x = mymodel.matrix) <- sapply(
+    X = colnames(x = mymodel.matrix),
+    FUN = function(name) {
+      name <- gsub(pattern = "counts.genenames", replacement = "", x = name)
+      return(name)
+    }
+  )
+  counts.agg <- t(mymodel.matrix) %*% counts.sce
+  return(counts.agg)
+}
+
+#' Read data from alevin for celocity analysis creating
+#' two additional assays
+#' @export
+ReadAlevinVelocity <- function(frydir) {
+  counts.spliced <- ReadAlevin(frydir = frydir, mode = "scRNA")
+  counts.total <- ReadAlevin(frydir = frydir, mode = "snRNA")
+  counts.unspliced <- counts.total - counts.spliced
+  object <- Seurat::CreateSeuratObject(counts = counts.total)
+  object[["spliced"]] <- Seurat::CreateAssayObject(counts = counts.spliced)
+  object[["unspliced"]] <- Seurat::CreateAssayObject(counts = counts.unspliced)
+  return (object)
+}
