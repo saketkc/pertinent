@@ -5,7 +5,7 @@
 \title{Read data from alevin for celocity analysis creating
 two additional assays}
 \usage{
-ReadAlevinVelocity(frydir)
+ReadAlevinVelocity(gtf.file, frydir)
 }
 \description{
 Read data from alevin for celocity analysis creating
