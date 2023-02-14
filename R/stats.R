@@ -43,6 +43,16 @@ GiniIndex <- function(x, weights = NULL) {
   return(gini)
 }
 
+#' Project a given matrix along a vector
+#' The vector is first standardized
+#' @export
+ProjectDataLongVector <- function(mtx.genebycell, f.vector){
+  f.vector <- f.vector - mean(x = f.vector)
+  f.vector <- f.vector/sqrt(x = sum(f.vector^2))
+  projection <- (mtx.genebycell - colSums(x = mtx.genebycell)) %*% f.vector
+  return (projection)
+}
+
 #' Calculate reconstruction error for a new dataset given feature loadings
 #' @importFrom Matrix t
 #' @export
@@ -76,3 +86,52 @@ ReconErrorPCA <- function(original.data, npcs = 50, weight.by.var = TRUE) {
   reconstruction.error <- sum((original.data - reconstructed.data)^2) / ncol(original.data)
   return(list(error = reconstruction.error, feature.loadings = feature.loadings, cell.embeddings = cell.embeddings))
 }
+
+#' Perform PCA
+#' @export
+DoPCA <- function(mtx.genebycell, npcs=50, use.irlba = T, weight.by.var = TRUE){
+  if (use.irlba){
+    pca.results <- irlba(A = t(x = mtx.genebycell), nv = npcs)
+    feature.loadings <- pca.results$v
+    sdev <- pca.results$d / sqrt(max(1, ncol(mtx.genebycell) - 1))
+
+    if (weight.by.var) {
+      cell.embeddings <- pca.results$u %*% diag(pca.results$d)
+    } else {
+      cell.embeddings <- pca.results$u
+    }
+  } else {
+    pca.results <- prcomp(x = t(mtx.genebycell), rank. = npcs, ...)
+    feature.loadings <- pca.results$rotation
+    sdev <- pca.results$sdev
+    if (weight.by.var) {
+      cell.embeddings <- pca.results$x
+    } else {
+      cell.embeddings <- pca.results$x / (pca.results$sdev[1:npcs] * sqrt(x = ncol(x = mtx.genebycell) - 1))
+    }
+  }
+  return (list(feature.loadings=feature.loadings, cell.embedding=cell.embedding))
+}
+
+
+#' Regress out covariates (or batches)
+#' @importFrom stats lm
+#' @export
+RegressOutLM <- function(data, cols = NULL, vars.to.regress) {
+  # not optimized for sparse
+  data <- as.data.frame(data)
+  stopifnot(vars.to.regress %in% colnames(data))
+  if (is.null(x = cols)) {
+    cols <- colnames(data)
+  }
+  data.subset <- data[, setdiff(cols, vars.to.regress)]
+  covariates <- data[, vars.to.regress, drop=FALSE]
+  data.regress <- apply(data.subset, 2, function(y) {
+    df <- cbind(y, covariates)
+    fit <- lm(y ~ ., data = df)
+    fit.residuals <- fit[["residuals"]] + fit[["coefficients"]][1]
+    return(as.vector(fit.residuals))
+  })
+  return (data.regress)
+}
+
