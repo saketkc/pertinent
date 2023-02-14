@@ -256,5 +256,6 @@ ReadAlevinVelocity <- function(gtf.file, frydir) {
   object <- Seurat::CreateSeuratObject(counts = counts.total)
   object[["spliced"]] <- Seurat::CreateAssayObject(counts = counts.spliced)
   object[["unspliced"]] <- Seurat::CreateAssayObject(counts = counts.unspliced)
+  object$spliced_ratio <- colSums(x = counts.spliced)/(colSums(x = counts.spliced) + colSums(x = counts.unspliced))
   return (object)
 }
