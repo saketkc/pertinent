@@ -53,6 +53,28 @@ ProjectDataLongVector <- function(mtx.genebycell, f.vector){
   return (projection)
 }
 
+
+#' Variance explained in PCA
+#' @export
+VarianceExplainedPCA <- function(mtx.genebycell, col_data, factors.of.interest, ...) {
+  data.pca <- DoPCA(mtx.genebycell = mtx.genebycell, ...)
+  frac.variance.explained <- rep(NA, length(factors.of.interest))
+  names(frac.variance.explained) <- factors.of.interest
+  for (foi in factors.of.interest){
+    foi.vector <- col_data[, foi]
+    if (!is.numeric(foi.vector)){
+      foi.vector <- factor(foi.vector)
+      foi.vector <- as.matrix(model.matrix(~ 0 + foi.vector))
+      #pca.results <- prcomp(foi.matrix, center = TRUE, scale. = FALSE)
+    }
+    projected <- ProjectDataLongVector(mtx.genebycell,
+                                                         foi.vector)
+    frac.variance.explained[[foi]] <- var(projected)/data.pca$total.variance
+  }
+  return (frac.variance.explained)
+}
+
+
 #' Calculate reconstruction error for a new dataset given feature loadings
 #' @importFrom Matrix t
 #' @export
@@ -67,14 +89,15 @@ PredictPCA <- function(feature.loadings, newdata) {
 }
 
 #' Perform PCA and return loadings along with reconstruction error
-#' @importFrom irlba irlba
+#' @importFrom irlba irlba prcomp_irlba
 #' @importFrom Matrix t
 #' @export
 #'
 ReconErrorPCA <- function(original.data, npcs = 50, weight.by.var = TRUE) {
   pca.results <- irlba(A = t(x = original.data), nv = npcs)
   feature.loadings <- pca.results$v
-  sdev <- pca.results$d / sqrt(max(1, ncol(object) - 1))
+  sdev <- pca.results$d / sqrt(max(1, ncol(original.data) - 1))
+  variance.explained <-
   weight.by.var <- TRUE
   if (weight.by.var) {
     cell.embeddings <- pca.results$u %*% diag(pca.results$d)
@@ -84,33 +107,67 @@ ReconErrorPCA <- function(original.data, npcs = 50, weight.by.var = TRUE) {
 
   reconstructed.data <- feature.loadings %*% t(cell.embeddings)
   reconstruction.error <- sum((original.data - reconstructed.data)^2) / ncol(original.data)
-  return(list(error = reconstruction.error, feature.loadings = feature.loadings, cell.embeddings = cell.embeddings))
+  return(list(error = reconstruction.error,
+              feature.loadings = feature.loadings,
+              cell.embeddings = cell.embeddings))
 }
 
 #' Perform PCA
+#' @importFrom irlba irlba prcomp_irlba
 #' @export
-DoPCA <- function(mtx.genebycell, npcs=50, use.irlba = T, weight.by.var = TRUE){
-  if (use.irlba){
+DoPCA <- function(mtx.genebycell, npcs=50, use.irlba = T,
+                  weight.by.var = TRUE, do.scale = FALSE,
+                  do.center = TRUE, scale=TRUE, method = "prcomp_irlba"){
+  mtx.genebycell <- Seurat::ScaleData(mtx.genebycell, do.scale = do.scale,
+                                      do.center = do.center )
+  npcs <- min(npcs, min(nrow(mtx.genebycell),ncol(mtx.genebycell) ))
+  if (method=="irlba"){
+    npcs <- min(npcs, min(nrow(mtx.genebycell)-1,ncol(mtx.genebycell)-1 ))
+    print(npcs)
+
     pca.results <- irlba(A = t(x = mtx.genebycell), nv = npcs)
     feature.loadings <- pca.results$v
     sdev <- pca.results$d / sqrt(max(1, ncol(mtx.genebycell) - 1))
-
+    variance.explained <- sdev^2
+    total.variance <- NA
     if (weight.by.var) {
       cell.embeddings <- pca.results$u %*% diag(pca.results$d)
     } else {
       cell.embeddings <- pca.results$u
     }
+  } else if(method=="prcomp_irlba") {
+    npcs <- min(npcs, min(nrow(mtx.genebycell)-1,ncol(mtx.genebycell)-1 ))
+
+    pca.results <- prcomp_irlba(x = t(x=mtx.genebycell), n = npcs,
+                                center = do.center, scale. = do.scale)
+    feature.loadings <- pca.results$rotation
+    sdev <- pca.results$sdev
+    variance.explained <- sdev^2
+    total.variance <-pca.results$totalvar
+    if (weight.by.var) {
+      cell.embeddings <- pca.results$x
+    } else {
+      cell.embeddings <- pca.results$x / (pca.results$sdev[1:npcs] * sqrt(x = ncol(x = mtx.genebycell) - 1))
+    }
+
+
   } else {
+
     pca.results <- prcomp(x = t(mtx.genebycell), rank. = npcs, ...)
     feature.loadings <- pca.results$rotation
     sdev <- pca.results$sdev
+    variance.explained <- sdev^2
+    total.variance <- sum(variance.explained)
     if (weight.by.var) {
       cell.embeddings <- pca.results$x
     } else {
       cell.embeddings <- pca.results$x / (pca.results$sdev[1:npcs] * sqrt(x = ncol(x = mtx.genebycell) - 1))
     }
   }
-  return (list(feature.loadings=feature.loadings, cell.embedding=cell.embedding))
+  return (list(variance.explained=variance.explained,
+               total.variance=total.variance,
+               feature.loadings=feature.loadings,
+               cell.embeddings=cell.embeddings))
 }
 
 
