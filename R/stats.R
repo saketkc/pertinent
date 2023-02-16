@@ -155,21 +155,17 @@ DoPCA <- function(mtx.genebycell, npcs = 50,
 #' Regress out covariates (or batches)
 #' @importFrom stats lm
 #' @export
-RegressOutLM <- function(data, cols = NULL, vars.to.regress) {
-  # not optimized for sparse
-  data <- as.data.frame(data)
-  stopifnot(vars.to.regress %in% colnames(data))
-  if (is.null(x = cols)) {
-    cols <- colnames(data)
-  }
-  data.subset <- data[, setdiff(cols, vars.to.regress)]
-  covariates <- data[, vars.to.regress, drop = FALSE]
-  data.regress <- apply(data.subset, 2, function(y) {
+RegressOutLM <- function(data, col_data, vars.to.regress) {
+  stopifnot(vars.to.regress %in% colnames(x = col_data))
+  covariates <- col_data[, vars.to.regress, drop = FALSE]
+  data.regress <- apply(data, 2, function(y) {
     df <- cbind(y, covariates)
     fit <- lm(y ~ ., data = df)
     fit.residuals <- fit[["residuals"]] + fit[["coefficients"]][1]
     return(as.vector(fit.residuals))
   })
+  rownames(x = data.regress) <- rownames(x = data)
+  colnames(x = data.regress) <- colnames(x = data)
   return(data.regress)
 }
 
