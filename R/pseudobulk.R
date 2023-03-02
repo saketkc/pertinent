@@ -62,10 +62,18 @@ CreateKPseudoBulk <- function(counts,
   }
   metadata_final <- bind_rows(metadata_group) %>% as.data.frame()
   rownames(metadata_final) <- metadata_final$barcode
-  mymodel.matrix <- sparse.model.matrix(
-    object = ~ 0 + replicate:group,
-    data = metadata_final
-  )
+
+  if (length(x = unique(x = metadata_final$group))==1) {
+    mymodel.matrix <- sparse.model.matrix(
+      object = ~ 0 + replicate,
+      data = metadata_final
+    )
+  } else {
+    mymodel.matrix <- sparse.model.matrix(
+      object = ~ 0 + replicate:group,
+      data = metadata_final
+    )
+  }
   colnames(x = mymodel.matrix) <- sapply(
     X = colnames(x = mymodel.matrix),
     FUN = function(name) {
@@ -79,7 +87,8 @@ CreateKPseudoBulk <- function(counts,
   counts.agg <- as.matrix(x = (counts.use %*% mymodel.matrix))
   if (return.seurat) {
     object <- CreateSeuratObject(counts = counts.agg)
-    metadata_split <- str_split_fixed(string = colnames(x = counts.agg), pattern = "__", n = 2)
+    metadata_split <- str_split_fixed(string = colnames(x = counts.agg),
+                                      pattern = "__", n = 2)
     object$group <- metadata_split[, 1]
     object$replicate <- metadata_split[, 2]
     return(object)

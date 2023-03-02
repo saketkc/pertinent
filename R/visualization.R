@@ -142,6 +142,7 @@ ConfusionHeatmap <- function(predictions.1, predictions.2){
     xlab("predictions.1") +
     ylab("predictions.2") +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size=14, colour = "black", face = "bold"),
+          axis.text.y = element_text(size=14, colour = "black", face = "bold"),
           axis.title.x = element_text(size = 16, color="black", face = "bold"),
           axis.title.y = element_text(size = 16, color="black", face = "bold"))
   return(p)
