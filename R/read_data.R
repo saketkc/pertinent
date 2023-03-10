@@ -214,21 +214,31 @@ ReadParsebioOutput <- function(path, add.hexR.assay = TRUE, add.polyT.assay = TR
 #' @importFrom dplyr distinct
 #' @importFrom Matrix t sparse.model.matrix
 #' @export
-ReadAlevin <- function(gtf.file, frydir, mode = "snRNA") {
-  gtf_ref <- rtracklayer::import(con = gtf.file, format="gtf")
-  geneid_to_genename <- gtf_ref %>%
-    as.data.frame() %>%
-    select(gene_id, gene_name) %>%
-    distinct()
-  geneid_to_genename$gene_name[is.na(geneid_to_genename$gene_name)] <- geneid_to_genename$gene_id[is.na(geneid_to_genename$gene_name)]
-  geneid_to_genename$gene_name[geneid_to_genename$gene_name == ""] <- geneid_to_genename$gene_id[geneid_to_genename$gene_name == ""]
-  geneid_to_genename$gene_name <- toupper(geneid_to_genename$gene_name)
-  geneid_to_genename <- geneid_to_genename %>% distinct()
-
+ReadAlevin <- function(frydir, gtf.file = NULL, geneid_to_genename = NULL, mode = "snRNA") {
+  if (!is.null(gtf.file)){
+    gtf_ref <- rtracklayer::import(con = gtf.file, format="gtf")
+    geneid_to_genename <- gtf_ref %>%
+      as.data.frame() %>%
+      select(gene_id, gene_name) %>%
+      distinct()
+    geneid_to_genename$gene_name[is.na(geneid_to_genename$gene_name)] <- geneid_to_genename$gene_id[is.na(geneid_to_genename$gene_name)]
+    geneid_to_genename$gene_name[geneid_to_genename$gene_name == ""] <- geneid_to_genename$gene_id[geneid_to_genename$gene_name == ""]
+    geneid_to_genename$gene_name <- toupper(geneid_to_genename$gene_name)
+    geneid_to_genename <- geneid_to_genename %>% distinct()
+  } else {
+    geneid_to_genename <- read.csv(geneid_to_genename, sep = "\t")
+  }
   sce <- fishpond::loadFry(fryDir = frydir, outputFormat = mode)
   counts.sce <- SingleCellExperiment::counts(sce)
+
+  gene_ids_missing <- setdiff(x = rownames(counts.sce), y = geneid_to_genename$gene_id)
+  if (length(x = gene_ids_missing)>0){
+    df <- data.frame(gene_id = gene_ids_missing, gene_name = gene_ids_missing)
+    geneid_to_genename <- rbind(geneid_to_genename, df)
+  }
   counts.sce <- counts.sce[!is.na(rownames(counts.sce)), ]
   counts.sce <- counts.sce[rownames(counts.sce) %in% geneid_to_genename$gene_id, ]
+
   counts.genenames <- geneid_to_genename$gene_name[match(rownames(counts.sce), geneid_to_genename$gene_id)]
   rownames(counts.sce) <- counts.genenames
 
@@ -243,15 +253,17 @@ ReadAlevin <- function(gtf.file, frydir, mode = "snRNA") {
     }
   )
   counts.agg <- t(mymodel.matrix) %*% counts.sce
+  rownames(counts.agg) <- unname(obj = rownames(x = counts.agg))
+  colnames(counts.agg) <- unname(obj = colnames(x = counts.agg))
   return(counts.agg)
 }
 
 #' Read data from alevin for celocity analysis creating
 #' two additional assays
 #' @export
-ReadAlevinVelocity <- function(gtf.file, frydir) {
-  counts.spliced <- ReadAlevin(gtf.file = gtf.file, frydir = frydir, mode = "scRNA")
-  counts.total <- ReadAlevin(gtf.file = gtf.file, frydir = frydir, mode = "snRNA")
+ReadAlevinVelocity <- function(frydir, gtf.file = NULL, geneid_to_genename = NULL) {
+  counts.spliced <- ReadAlevin(frydir = frydir, gtf.file = gtf.file, geneid_to_genename = geneid_to_genename, mode = "scRNA")
+  counts.total <- ReadAlevin(frydir = frydir, gtf.file = gtf.file, geneid_to_genename = geneid_to_genename, mode = "snRNA")
   counts.unspliced <- counts.total - counts.spliced
   object <- Seurat::CreateSeuratObject(counts = counts.total)
   object[["spliced"]] <- Seurat::CreateAssayObject(counts = counts.spliced)
