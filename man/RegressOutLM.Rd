@@ -4,7 +4,7 @@
 \alias{RegressOutLM}
 \title{Regress out covariates (or batches)}
 \usage{
-RegressOutLM(data, cols = NULL, vars.to.regress)
+RegressOutLM(data, col_data, vars.to.regress)
 }
 \description{
 Regress out covariates (or batches)

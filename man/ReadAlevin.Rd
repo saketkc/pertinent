@@ -4,7 +4,7 @@
 \alias{ReadAlevin}
 \title{Read data from alevin-fry}
 \usage{
-ReadAlevin(gtf.file, frydir, mode = "snRNA")
+ReadAlevin(frydir, gtf.file = NULL, geneid_to_genename = NULL, mode = "snRNA")
 }
 \description{
 Read data from alevin-fry
