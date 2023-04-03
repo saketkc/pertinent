@@ -32,7 +32,7 @@ ReadSummit <- function(path, cols_to_keep = c("chrom", "start", "end", "score"))
 GetChromSizes <- function(bsgenome, keep.stdchroms = TRUE, filter.mt = TRUE) {
   chrom.gr <- as(object = seqinfo(x = bsgenome), Class = "GRanges")
   if (keep.stdchroms) {
-    chrom.gr <- keepStandardChromosomes(x = chrom.gr)
+    chrom.gr <- keepStandardChromosomes(x = chrom.gr, pruning.mode = "coarse")
   }
   if (filter.mt) {
     chrom.gr <- chrom.gr[!seqnames(x = chrom.gr) %in% c("MT", "chrM", "chrMT")]
