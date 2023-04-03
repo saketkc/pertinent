@@ -28,14 +28,16 @@ ReadSummit <- function(path, cols_to_keep = c("chrom", "start", "end", "score"))
   return(gr)
 }
 
+#' @importFrom GenomeInfoDb seqnames keepStandardChromosomes
 #' @export
+#'
 GetChromSizes <- function(bsgenome, keep.stdchroms = TRUE, filter.mt = TRUE) {
   chrom.gr <- as(object = seqinfo(x = bsgenome), Class = "GRanges")
   if (keep.stdchroms) {
     chrom.gr <- keepStandardChromosomes(x = chrom.gr, pruning.mode = "coarse")
   }
   if (filter.mt) {
-    chrom.gr <- chrom.gr[!seqnames(x = chrom.gr) %in% c("MT", "chrM", "chrMT")]
+    #chrom.gr <- chrom.gr[!seqnames(x = chrom.gr) %in% c("MT", "chrM", "chrMT")]
   }
   return(chrom.gr)
 }
@@ -94,9 +96,9 @@ MergePeaksIterative <- function(summits.path.list = NULL,
                                 blacklist = NULL, extend = 250,
                                 min.spm = 1, ...) {
   if (is.null(x = summits.gr.list) & is.null(x = summits.path.list)) stop("Both summits.path.list and summits.gr.list cannot be null")
-  chrom.sizes <- GetChromSizes(bsgenome = bsgenome, ...)
+  chrom.sizes <- GetChromSizes(bsgenome = bsgenome)
 
-  if (!is.null(x = blacklist)) {
+  if (!is.null(x = blacklist) & class(x = blacklist) == "character") {
     blacklist <- import.bed(con = blacklist)
   } else {
     blacklist <- GRanges()
@@ -120,7 +122,7 @@ MergePeaksIterative <- function(summits.path.list = NULL,
       subsetByOverlaps(., ranges = blacklist, type = "within", invert = TRUE) %>%
       # 5. Remove overlaps
       # IterativeFilterPeaks(., filter.by = "score", decreasing = TRUE)
-      convergeClusterGRanges(., by = "score", decreasing = T)
+      IterativeFilterPeaks(., filter.by = "score", decreasing = T)
     # 6. Add score per millionm
     mcols(x = summits.extend)$score <- mcols(x = summits.extend)$score / sum(mcols(x = summits.extend)$score) * 1e6
     return(summits.extend)
