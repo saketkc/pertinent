@@ -271,3 +271,28 @@ ReadAlevinVelocity <- function(frydir, gtf.file = NULL, geneid_to_genename = NUL
   object$spliced_ratio <- colSums(x = counts.spliced)/(colSums(x = counts.spliced) + colSums(x = counts.unspliced))
   return (object)
 }
+
+
+#' Convert counts matrix to have gene names
+#' @importFrom Matrix t sparse.model.matrix
+#' @export
+CountsMatrixID2Name <- function(counts, g2g){
+  colnames(g2g)[1:2] <- c("gene_id", "gene_name")
+  counts.genenames <- as.character(x = g2g$gene_name[match(rownames(counts), g2g$gene_id)])
+  rownames(counts) <- counts.genenames
+
+  mymodel.matrix <- sparse.model.matrix(
+    object = ~ 0 + counts.genenames
+  )
+  colnames(x = mymodel.matrix) <- sapply(
+    X = colnames(x = mymodel.matrix),
+    FUN = function(name) {
+      name <- gsub(pattern = "counts.genenames", replacement = "", x = name)
+      return(name)
+    }
+  )
+  counts.agg <- t(mymodel.matrix) %*% counts
+  rownames(counts.agg) <- as.character(x = unname(obj = rownames(x = counts.agg)))
+  colnames(counts.agg) <- as.character(x = unname(obj = colnames(x = counts.agg)))
+  return (counts.agg)
+}
