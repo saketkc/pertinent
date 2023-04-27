@@ -278,6 +278,13 @@ ReadAlevinVelocity <- function(frydir, gtf.file = NULL, geneid_to_genename = NUL
 #' @export
 CountsMatrixID2Name <- function(counts, g2g){
   colnames(g2g)[1:2] <- c("gene_id", "gene_name")
+
+  # Add genes if these are missing from the g2g
+  missing.genes <- setdiff(x = rownames(x = counts), y = g2g$gene_id)
+  if (length(missing.genes)>0){
+    df2 <- data.frame(gene_id = missing.genes, gene_name = missing.genes)
+    g2g <- rbind(g2g, df2)
+  }
   counts.genenames <- as.character(x = g2g$gene_name[match(rownames(counts), g2g$gene_id)])
   rownames(counts) <- counts.genenames
 
