@@ -25,6 +25,9 @@ ParseGTF <- function(gtf, seqlevels_prefix = NULL) {
   if (!is.null(x = seqlevels_prefix)) {
     seqlevels(x = gtf.gr) <- paste0(seqlevels_prefix, seqlevels(x = gtf.gr))
   }
+  if ("gene_type" %in% colnames(x = mcols(x = gtf.gr))){
+    gtf.gr$gene_biotype <- gtf.gr$gene_type
+  }
   gene_map <- mcols(x = gtf.gr)[, c("gene_id", "gene_name", "gene_biotype")] %>% as.data.frame()
   gene_map$strand <- as.character(x = strand(x = gtf.gr))
   gene_map <- gene_map %>%
