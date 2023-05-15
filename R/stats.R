@@ -191,3 +191,16 @@ VarianceExplainedPCA <- function(mtx.genebycell, col_data, factors.of.interest, 
   return(frac.variance.explained)
 }
 
+#  Calculate gene-gene covariance for a given set of cells
+#' @param svd A list (such as outputed by irlba) containing U, d, V
+#' @param cells A vector with names of cells to retain
+CovarianceFromSVD <- function(svd, cells = NULL) {
+  if (is.null(cells)) {
+    # gene by gene covariance
+    covariance <- tcrossprod(x = svd$u %*% diag(svd$d**2), y = svd$u)
+  } else {
+    covariance <- tcrossprod(x = svd$u %*% diag(svd$d), y = svd$v[cells, ]) %*% tcrossprod(x = svd$v[cells, ] %*% diag(svd$d), y = svd$u)
+  }
+  ncells <- nrow(x = svd$v)
+  return(covariance / (ncells - 1))
+}
