@@ -1,7 +1,7 @@
 Package: pertinent
 Title: Collection of useful functions for processing single-cell data
-Version: 0.0.0.9006
-Date: 2023-02-16
+Version: 0.0.0.9007
+Date: 2024-02-08
 Authors@R: 
     person(given = "Saket",
            family = "Choudhary",
@@ -19,7 +19,9 @@ Suggests:
   Seurat,
   Signac,
   SeuratDisk,
-  metacell
+  metacell,
+  Rsamtools,
+  GenomicRanges
 Description: Collection of useful functions for processing single-cell data.
 License: BSD
 Encoding: UTF-8

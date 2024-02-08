@@ -1,0 +1,110 @@
+---
+title: "Processing Parsebio bams"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+suppressPackageStartupMessages({
+  library(pertinent)
+  library(ggpubr)
+  library(tidyverse)
+})
+theme_set(theme_pubr())
+```
+
+```{r}
+bam.location <- "~/github/ParsebioSensitivity/data/Parsebio_PBMC_600k_bams/full_data/bams/1.bam"
+cells.to.keep <- readLines("~/github/ParsebioSensitivity/data/Parsebio_PBMC_600k_bams/full_data/bams/1_cells.txt")
+```
+
+# Plot metagene distribution
+
+## PBMC
+```{r}
+df.polyT <- read.csv("~/github/ParsebioSensitivity_PBMC/hexR_polyT_split/7_polyT.metagene.csv")
+df.polyT$type <- "polyT"
+df.hexR <- read.csv("~/github/ParsebioSensitivity_PBMC/hexR_polyT_split/7_hexR.metagene.csv")
+df.hexR$type <- "hexR"
+
+df.combined <- rbind(df.polyT, df.hexR)
+ggplot(df.combined, aes(quantile, normalized_coverage, color = type)) +
+  geom_line() +
+  scale_color_brewer(palette = "Set1")
+```
+
+
+## Zoobrain
+```{r}
+df.polyT <- read.csv("~/github/ZoobrainParseBio/output_snakemake_native/librarywise_HexR_PolyT_bigwigs/Ferret__FM__Library_15_polyT.metagene.csv")
+df.polyT$type <- "polyT"
+df.hexR <- read.csv("~/github/ZoobrainParseBio/output_snakemake_native/librarywise_HexR_PolyT_bigwigs/Ferret__FM__Library_15_hexR.metagene.csv")
+df.hexR$type <- "hexR"
+
+df.10x <- read.csv("~/github/Zoobrain-private/output/snakemake_output/quantification/Ferret/Human_and_Mouse/cellranger_output/Ferret_MC/outs/possorted_genome_bam.retainedbarcodes.metagene.csv")
+df.10x$type <- "10X"
+
+
+df.combined <- rbind(df.polyT, df.hexR) %>% rbind(df.10x)
+p.ferret <- ggplot(df.combined, aes(quantile, normalized_coverage, color = type)) +
+  geom_line() +
+  scale_color_brewer(palette = "Set1") +
+  xlab("Gene body percentile (5' -> 3')") +
+  ylab("Normalized coverage") +
+  ggtitle("Ferret")
+p.ferret
+```
+
+```{r}
+df.polyT <- read.csv("~/github/ZoobrainParseBio/output_snakemake_native/librarywise_HexR_PolyT_bigwigs/Pig__PM__Library_15_polyT.metagene.csv")
+df.polyT$type <- "polyT"
+df.hexR <- read.csv("~/github/ZoobrainParseBio/output_snakemake_native/librarywise_HexR_PolyT_bigwigs/Pig__PM__Library_15_hexR.metagene.csv")
+df.hexR$type <- "hexR"
+
+df.10x <- read.csv("~/github/Zoobrain-private/output/snakemake_output/quantification/Pig/Human_and_Mouse/cellranger_output/Pig_MC/outs/possorted_genome_bam.retainedbarcodes.metagene.csv")
+df.10x$type <- "10X"
+
+
+df.combined <- rbind(df.polyT, df.hexR) %>% rbind(df.10x)
+p.pig <- ggplot(df.combined, aes(quantile, normalized_coverage, color = type)) +
+  geom_line() +
+  scale_color_brewer(palette = "Set1") +
+  xlab("Gene body percentile (5' -> 3')") +
+  ylab("Normalized coverage") +
+  ggtitle("Pig")
+p.pig
+```
+
+```{r}
+df.polyT <- read.csv("~/github/ZoobrainParseBio/output_snakemake_native/librarywise_HexR_PolyT_bigwigs/Sheep__SM__Library_15_polyT.metagene.csv")
+df.polyT$type <- "polyT"
+df.hexR <- read.csv("~/github/ZoobrainParseBio/output_snakemake_native/librarywise_HexR_PolyT_bigwigs/Sheep__SM__Library_15_hexR.metagene.csv")
+df.hexR$type <- "hexR"
+
+df.10x <- read.csv("~/github/ZoobrainMultiome/output_snakemake_native/bams/Sheep_MC/gex_possorted_genome_bam.retainedbarcodes.metagene.csv")
+df.10x$type <- "10X"
+
+
+df.combined <- rbind(df.polyT, df.hexR) %>% rbind(df.10x)
+p.sheep <- ggplot(df.combined, aes(quantile, normalized_coverage, color = type)) +
+  geom_line() +
+  scale_color_brewer(palette = "Set1") +
+  xlab("Gene body percentile (5' -> 3')") +
+  ylab("Normalized coverage") +
+  ggtitle("Sheep")
+p.sheep
+```
+```{r}
+p.ferret | p.pig | p.sheep
+```
+
+# Separate hexR and polyT reads
+
+```{r}
+df_data <- read.csv("~/github/Zoo")
+```
+
+
+```{r}
+```
